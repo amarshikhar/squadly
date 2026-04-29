@@ -1,0 +1,51 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    color-scheme: dark;
+  }
+
+  html {
+    scroll-behavior: smooth;
+  }
+
+  body {
+    @apply bg-bg-0 text-text-1 font-sans antialiased;
+    font-feature-settings: 'cv11', 'ss01';
+  }
+
+  ::selection {
+    @apply bg-neon-cyan text-black;
+  }
+
+  h1, h2, h3, h4, h5 {
+    @apply font-display tracking-tight text-text-0;
+  }
+}
+
+@layer components {
+  .container-x {
+    @apply max-w-[1280px] mx-auto px-6 lg:px-12;
+  }
+
+  .glow-cyan-text {
+    text-shadow: 0 0 20px rgba(0, 240, 255, 0.45);
+  }
+
+  .glow-magenta-text {
+    text-shadow: 0 0 20px rgba(255, 46, 170, 0.45);
+  }
+
+  .grid-bg {
+    background-image:
+      linear-gradient(rgba(0, 240, 255, 0.04) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(0, 240, 255, 0.04) 1px, transparent 1px);
+    background-size: 80px 80px;
+  }
+
+  .card-mock {
+    @apply bg-bg-1 border border-border rounded-xl shadow-card;
+  }
+}

@@ -1,0 +1,36 @@
+# Dependencies
+node_modules/
+.pnpm-store/
+
+# Next.js
+.next/
+out/
+.vercel/
+
+# Env
+.env
+.env.local
+.env.production
+.env.development.local
+.env.test.local
+
+# Build artifacts
+*.tsbuildinfo
+next-env.d.ts
+dist/
+
+# Misc
+.DS_Store
+*.log
+npm-debug.log*
+pnpm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.idea/
+.vscode/
+
+# Coverage
+coverage/
+
+# Drizzle migrations cache
+drizzle/meta/
