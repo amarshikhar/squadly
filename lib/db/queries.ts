@@ -55,7 +55,12 @@ export interface ServiceFilters {
   creatorId?: string;
   status?: 'draft' | 'live' | 'paused' | 'archived';
   search?: string;
+  minPriceInr?: number;          // paise
+  maxPriceInr?: number;          // paise
+  minRating?: number;            // 1-5
+  verifiedOnly?: boolean;
   limit?: number;
+  sort?: 'recent' | 'price_asc' | 'price_desc' | 'rating';
 }
 
 export async function listServices(filters: ServiceFilters = {}) {
@@ -63,9 +68,16 @@ export async function listServices(filters: ServiceFilters = {}) {
   if (filters.game) conditions.push(eq(services.game, filters.game as any));
   if (filters.type) conditions.push(eq(services.type, filters.type as any));
   if (filters.creatorId) conditions.push(eq(services.creatorId, filters.creatorId));
-  if (filters.search) conditions.push(ilike(services.title, `%${filters.search}%`));
+  if (filters.search) {
+    conditions.push(
+      sql`(${services.title} ILIKE ${'%' + filters.search + '%'} OR ${services.description} ILIKE ${'%' + filters.search + '%'})`,
+    );
+  }
+  if (filters.minPriceInr !== undefined) conditions.push(sql`${services.priceInr} >= ${filters.minPriceInr}`);
+  if (filters.maxPriceInr !== undefined) conditions.push(sql`${services.priceInr} <= ${filters.maxPriceInr}`);
+  if (filters.verifiedOnly) conditions.push(eq(users.isVerified, true));
 
-  return db
+  let q = db
     .select({
       service: services,
       creator: {
@@ -78,9 +90,25 @@ export async function listServices(filters: ServiceFilters = {}) {
     })
     .from(services)
     .innerJoin(users, eq(users.id, services.creatorId))
-    .where(and(...conditions))
-    .orderBy(desc(services.isFeatured), desc(services.createdAt))
-    .limit(filters.limit ?? 50);
+    .where(and(...conditions));
+
+  // Sorting
+  switch (filters.sort) {
+    case 'price_asc':
+      q = q.orderBy(asc(services.priceInr)) as any;
+      break;
+    case 'price_desc':
+      q = q.orderBy(desc(services.priceInr)) as any;
+      break;
+    case 'rating':
+      // Featured first, then recent — true rating sort needs join to provider_profiles
+      q = q.orderBy(desc(services.isFeatured), desc(services.createdAt)) as any;
+      break;
+    default:
+      q = q.orderBy(desc(services.isFeatured), desc(services.createdAt)) as any;
+  }
+
+  return q.limit(filters.limit ?? 50);
 }
 
 export async function getServiceById(id: string) {
