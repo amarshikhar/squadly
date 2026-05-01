@@ -124,6 +124,7 @@ const PROTECTED_PAGE_PATTERNS = [
   /^\/vault/, /^\/home/, /^\/goals/, /^\/passes\/create/,
   /^\/requests/, /^\/payouts/, /^\/profile/, /^\/services\/create/,
   /^\/services$/, /^\/messages/,
+  /^\/notifications/, /^\/referrals/,
 ];
 const PUBLIC_API_PATTERNS = [/^\/api\/services$/, /^\/api\/goals/, /^\/api\/bids/, /^\/api\/passes/];
 const SKIP_API_PATTERNS = [/^\/api\/auth/, /^\/api\/webhooks/, /^\/api\/jobs/];

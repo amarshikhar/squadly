@@ -27,6 +27,8 @@ const PROTECTED_PAGE_PATTERNS = [
   /^\/services\/create/,
   /^\/services$/,
   /^\/messages/,
+  /^\/notifications/,
+  /^\/referrals/,
 ];
 
 // API routes where auth is enforced per-method inside the handler

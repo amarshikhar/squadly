@@ -12,6 +12,9 @@ import {
   listCreatorServices,
 } from '@/lib/db/queries';
 import { formatInr, formatCoins } from '@/lib/utils';
+import { touch, getStreak } from '@/lib/streaks';
+import { db, badgeAwards } from '@/lib/db';
+import { eq, desc } from 'drizzle-orm';
 
 export const dynamic = 'force-dynamic';
 
@@ -21,11 +24,16 @@ export default async function HomePage() {
 
   const userId = session.user.id;
 
-  const [vault, myGoals, myRequests, myServices] = await Promise.all([
+  // Touch streak — tracks daily engagement
+  await touch(userId).catch(() => null);
+
+  const [vault, myGoals, myRequests, myServices, streak, badges] = await Promise.all([
     getVaultBalance(userId),
     listActiveGoals(userId),
     listRequestsForCreator(userId),
     listCreatorServices(userId),
+    getStreak(userId),
+    db.query.badgeAwards.findMany({ where: eq(badgeAwards.userId, userId), orderBy: [desc(badgeAwards.awardedAt)], limit: 6 }),
   ]);
 
   const pendingCount = myRequests.filter((r) => r.request.status === 'pending').length;
@@ -38,9 +46,27 @@ export default async function HomePage() {
         <h1 className="mt-6 font-display text-display-lg text-text-0">
           Welcome back, {session.user.name?.split(' ')[0] ?? 'player'}.
         </h1>
-        <p className="mt-3 max-w-xl text-text-2">
-          Here&apos;s what&apos;s happening on your squad today.
-        </p>
+
+        {/* Streak + quick links */}
+        <div className="mt-6 flex flex-wrap items-center gap-3">
+          {streak && streak.currentDays > 0 && (
+            <div className="flex items-center gap-2 rounded-full border border-neon-amber/30 bg-neon-amber/10 px-4 py-2">
+              <span className="text-neon-amber">🔥</span>
+              <span className="font-mono text-sm text-text-0">
+                <span className="text-neon-amber font-semibold">{streak.currentDays}</span>-day streak
+              </span>
+              {streak.longestDays > streak.currentDays && (
+                <span className="font-mono text-[11px] text-text-3">· best {streak.longestDays}</span>
+              )}
+            </div>
+          )}
+          <Link href="/referrals" className="rounded-full border border-border-bright bg-neon-cyan/5 px-4 py-2 font-mono text-xs text-neon-cyan hover:bg-neon-cyan/10">
+            🎁 Invite & earn coins
+          </Link>
+          <Link href="/feed" className="rounded-full border border-border bg-bg-2 px-4 py-2 font-mono text-xs text-text-2 hover:border-border-bright hover:text-text-0">
+            What&apos;s happening →
+          </Link>
+        </div>
 
         {/* KPI row */}
         <div className="mt-10 grid gap-6 md:grid-cols-3">
@@ -72,13 +98,32 @@ export default async function HomePage() {
           </Card>
         </div>
 
+        {/* Badges */}
+        {badges.length > 0 && (
+          <section className="mt-14">
+            <h2 className="mb-4 font-display text-2xl text-text-0">Your badges</h2>
+            <div className="flex flex-wrap gap-2">
+              {badges.map((b) => (
+                <Badge key={b.id} variant="amber">
+                  {b.code.replace(/_/g, ' ')}
+                </Badge>
+              ))}
+            </div>
+          </section>
+        )}
+
         {/* Services */}
         <section className="mt-16">
           <div className="mb-5 flex items-center justify-between">
             <h2 className="font-display text-2xl text-text-0">Your services</h2>
-            <Button asChild size="sm">
-              <Link href="/services/create">+ New service</Link>
-            </Button>
+            <div className="flex gap-2">
+              <Button asChild size="sm" variant="outline">
+                <Link href="/passes/create">+ Lobby Pass</Link>
+              </Button>
+              <Button asChild size="sm">
+                <Link href="/services/create">+ New service</Link>
+              </Button>
+            </div>
           </div>
 
           {myServices.length === 0 ? (

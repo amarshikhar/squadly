@@ -21,6 +21,7 @@ import {
   type Transaction,
 } from './db/schema';
 import { tierForCoins } from './utils';
+import { emit } from './notifications';
 
 type Tx = Parameters<Parameters<typeof db.transaction>[0]>[0];
 
@@ -256,6 +257,29 @@ export async function settleCompletedRequest(requestId: string) {
         unlockRefId: req.id,
       })
       .onConflictDoNothing();
+  }).then(async () => {
+    // Notifications outside transaction (best-effort)
+    const r = await db.query.serviceRequests.findFirst({ where: eq(serviceRequests.id, requestId) });
+    if (r) {
+      await Promise.all([
+        emit({
+          userId: r.buyerId,
+          type: 'request_completed',
+          title: 'Service completed',
+          body: 'Leave a review to help future buyers.',
+          link: `/requests/${r.id}`,
+          relatedId: r.id,
+        }),
+        emit({
+          userId: r.creatorId,
+          type: 'request_completed',
+          title: 'Service paid out',
+          body: 'Funds added to your Vault.',
+          link: '/vault',
+          relatedId: r.id,
+        }),
+      ]);
+    }
   });
 }
 
@@ -339,7 +363,34 @@ export async function contributeToGoal(opts: {
     // 5. Update fan's squad_rank for this creator
     await upsertSquadRank({ creatorId: goal.creatorId, fanId: opts.fanId, addCoins: opts.coins, tx });
 
-    return { goal: updated[0], transactionId: coinTx.id };
+    return { goal: updated[0], transactionId: coinTx.id, wasFunded: updated[0]?.status === 'funded' };
+  }).then(async (result) => {
+    // Notify creator of contribution
+    await emit({
+      userId: (await db.query.squadGoals.findFirst({ where: eq(squadGoals.id, opts.goalId) }))!.creatorId,
+      type: 'goal_contribution_received',
+      title: `+${opts.coins} coins toward your goal`,
+      body: `${result.goal?.currentCoins}/${result.goal?.targetCoins} coins so far`,
+      link: `/goals/${opts.goalId}`,
+      actorId: opts.fanId,
+      relatedId: opts.goalId,
+    });
+
+    if (result.wasFunded) {
+      // Notify creator
+      const goalRow = await db.query.squadGoals.findFirst({ where: eq(squadGoals.id, opts.goalId) });
+      if (goalRow) {
+        await emit({
+          userId: goalRow.creatorId,
+          type: 'goal_funded',
+          title: 'Squad Goal funded! Time to deliver.',
+          body: goalRow.title,
+          link: `/goals/${goalRow.id}`,
+          relatedId: goalRow.id,
+        });
+      }
+    }
+    return result;
   });
 }
 

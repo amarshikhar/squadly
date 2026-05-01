@@ -21,6 +21,7 @@ import {
 } from './db/schema';
 import { upsertSquadRank } from './ledger';
 import { publish, channels, events } from './pusher';
+import { emit } from './notifications';
 
 type Tx = Parameters<Parameters<typeof db.transaction>[0]>[0];
 
@@ -70,6 +71,11 @@ export async function placeBid(opts: { passId: string; bidderId: string; coinAmo
         .set({ status: 'refunded', refundedAt: new Date() })
         .where(eq(lobbyPassBids.id, existingMine.id));
     }
+
+    // Capture old top bidder (if any) so we can notify them they were outbid
+    const oldTop = await tx.query.lobbyPassBids.findFirst({
+      where: and(eq(lobbyPassBids.passId, passId), eq(lobbyPassBids.status, 'winning')),
+    });
 
     // 4. Validate balance + escrow new bid coins
     const vault = await tx.query.vaultBalances.findFirst({ where: eq(vaultBalances.userId, bidderId) });
@@ -127,7 +133,20 @@ export async function placeBid(opts: { passId: string; bidderId: string; coinAmo
       }
     }
 
-    return { bid: newBid, topBids };
+    return { bid: newBid, topBids, pass, oldTop };
+  }).then(async (result) => {
+    // Notify the previous top bidder (if any and different from us)
+    if (result.oldTop && result.oldTop.bidderId !== opts.bidderId) {
+      await emit({
+        userId: result.oldTop.bidderId,
+        type: 'bid_outbid',
+        title: `You were outbid on "${result.pass.title}"`,
+        body: 'Your coins remain held until auction closes — bid again to reclaim a slot.',
+        link: `/passes/${result.pass.id}`,
+        relatedId: result.pass.id,
+      });
+    }
+    return { bid: result.bid, topBids: result.topBids };
   });
 }
 
@@ -224,9 +243,36 @@ export async function closePass(passId: string) {
     //    For simplicity now: creator earns the full coin amount; fee tracked in ledger.
 
     return {
+      pass,
       winners: winners.map((w) => ({ bidId: w.id, bidderId: w.bidderId, amount: w.coinAmount })),
+      losers: losers.map((l) => ({ bidderId: l.bidderId, amount: l.coinAmount })),
       losersRefunded: losers.length,
     };
+  }).then(async (result) => {
+    // Notifications outside the transaction
+    if ('winners' in result && result.winners) {
+      for (const w of result.winners) {
+        await emit({
+          userId: w.bidderId,
+          type: 'pass_won',
+          title: `You won "${result.pass.title}"`,
+          body: `Locked in for ${w.amount} coins. DM unlocked.`,
+          link: `/passes/${result.pass.id}`,
+          relatedId: result.pass.id,
+        });
+      }
+      for (const l of result.losers) {
+        await emit({
+          userId: l.bidderId,
+          type: 'pass_lost',
+          title: `Auction closed: "${result.pass.title}"`,
+          body: `Refund: ${l.amount} coins back in your Vault.`,
+          link: '/vault',
+          relatedId: result.pass.id,
+        });
+      }
+    }
+    return result;
   });
 }
 

@@ -14,6 +14,24 @@ import { format } from 'date-fns';
 
 export const dynamic = 'force-dynamic';
 
+export async function generateMetadata({ params }: { params: { id: string } }) {
+  const data = await getPassWithBids(params.id);
+  if (!data) return { title: 'Lobby Pass' };
+  return {
+    title: `${data.pass.title} · Lobby Pass`,
+    description: data.pass.description ?? 'Bid for a slot in this Lobby Pass on Squadly',
+    openGraph: {
+      title: data.pass.title,
+      description: `${data.pass.slotCount} slot${data.pass.slotCount > 1 ? 's' : ''} · live bidding`,
+      images: [`/api/og/pass/${data.pass.id}`],
+    },
+    twitter: {
+      card: 'summary_large_image',
+      images: [`/api/og/pass/${data.pass.id}`],
+    },
+  };
+}
+
 export default async function PassDetail({ params }: { params: { id: string } }) {
   const session = await auth();
   const data = await getPassWithBids(params.id);

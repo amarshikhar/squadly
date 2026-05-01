@@ -12,6 +12,24 @@ import { formatDistanceToNow } from 'date-fns';
 
 export const dynamic = 'force-dynamic';
 
+export async function generateMetadata({ params }: { params: { id: string } }) {
+  const found = await getGoalById(params.id);
+  if (!found) return { title: 'Squad Goal' };
+  return {
+    title: `${found.goal.title} · @${found.creator.handle}`,
+    description: found.goal.description ?? `Squad Goal by @${found.creator.handle}`,
+    openGraph: {
+      title: found.goal.title,
+      description: `${found.goal.currentCoins}/${found.goal.targetCoins} coins · @${found.creator.handle}`,
+      images: [`/api/og/goal/${found.goal.id}`],
+    },
+    twitter: {
+      card: 'summary_large_image',
+      images: [`/api/og/goal/${found.goal.id}`],
+    },
+  };
+}
+
 export default async function GoalDetail({ params }: { params: { id: string } }) {
   const session = await auth();
   const found = await getGoalById(params.id);

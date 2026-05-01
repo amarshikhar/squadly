@@ -10,6 +10,24 @@ import { getServiceById } from '@/lib/db/queries';
 
 export const revalidate = 30;
 
+export async function generateMetadata({ params }: { params: { id: string } }) {
+  const found = await getServiceById(params.id);
+  if (!found) return { title: 'Service' };
+  return {
+    title: `${found.service.title} · @${found.creator.handle}`,
+    description: found.service.description.slice(0, 160),
+    openGraph: {
+      title: found.service.title,
+      description: `Book on Squadly · @${found.creator.handle}`,
+      images: [`/api/og/service/${found.service.id}`],
+    },
+    twitter: {
+      card: 'summary_large_image',
+      images: [`/api/og/service/${found.service.id}`],
+    },
+  };
+}
+
 export default async function ServiceDetail({ params }: { params: { id: string } }) {
   const found = await getServiceById(params.id);
   if (!found) notFound();

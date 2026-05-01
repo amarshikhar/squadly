@@ -16,8 +16,27 @@ import {
   listReviewsForCreator,
 } from '@/lib/db/queries';
 import type { RankTier } from '@/lib/utils';
+import type { Metadata } from 'next';
 
 export const revalidate = 60;
+
+export async function generateMetadata({ params }: { params: { handle: string } }): Promise<Metadata> {
+  const profile = await getCreatorProfile(params.handle);
+  if (!profile) return { title: `@${params.handle}` };
+  return {
+    title: `${profile.user.displayName} (@${profile.user.handle})`,
+    description: profile.user.bio ?? undefined,
+    openGraph: {
+      title: `${profile.user.displayName} on Squadly`,
+      description: profile.user.bio ?? `${profile.user.displayName}'s services on Squadly`,
+      images: [`/api/og/profile/${profile.user.handle}`],
+    },
+    twitter: {
+      card: 'summary_large_image',
+      images: [`/api/og/profile/${profile.user.handle}`],
+    },
+  };
+}
 
 export default async function StreamerHub({ params }: { params: { handle: string } }) {
   const profile = await getCreatorProfile(params.handle);
