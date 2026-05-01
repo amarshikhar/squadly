@@ -42,17 +42,6 @@ export const goalStatus = pgEnum('goal_status', ['active', 'funded', 'expired', 
 export const rankTier = pgEnum('rank_tier', ['recruit', 'soldier', 'veteran', 'legend', 'commander']);
 export const bidStatus = pgEnum('bid_status', ['active', 'outbid', 'winning', 'won', 'refunded']);
 export const passStatus = pgEnum('pass_status', ['open', 'closed', 'fulfilled', 'cancelled']);
-export const notificationType = pgEnum('notification_type', [
-  'goal_funded', 'goal_contribution_received', 'request_pending', 'request_accepted',
-  'request_completed', 'bid_outbid', 'pass_won', 'pass_lost', 'message_received',
-  'tier_promoted', 'badge_awarded', 'referral_redeemed', 'system',
-]);
-export const referralStatus = pgEnum('referral_status', ['pending', 'redeemed', 'rewarded', 'expired']);
-export const badgeCode = pgEnum('badge_code', [
-  'first_service_listed', 'first_sale', 'ten_sales', 'hundred_sales',
-  'first_goal_funded', 'first_lobby_pass_won', 'commander_tier',
-  'verified_creator', 'streak_7_day', 'streak_30_day',
-]);
 
 // ============================================================================
 // USERS & PROFILES
@@ -282,6 +271,74 @@ export const lobbyPassBids = pgTable('lobby_pass_bids', {
 });
 
 // ============================================================================
+// NOTIFICATIONS, STREAKS, REFERRALS, BADGES (Phase 3)
+// ============================================================================
+
+export const notificationType = pgEnum('notification_type', [
+  'goal_funded', 'goal_contribution_received', 'request_pending', 'request_accepted',
+  'request_completed', 'bid_outbid', 'pass_won', 'pass_lost', 'message_received',
+  'tier_promoted', 'badge_awarded', 'referral_redeemed', 'system',
+]);
+
+export const referralStatus = pgEnum('referral_status', ['pending', 'redeemed', 'rewarded', 'expired']);
+
+export const badgeCode = pgEnum('badge_code', [
+  'first_service_listed', 'first_sale', 'ten_sales', 'hundred_sales',
+  'first_goal_funded', 'first_lobby_pass_won', 'commander_tier',
+  'verified_creator', 'streak_7_day', 'streak_30_day',
+]);
+
+export const notifications = pgTable('notifications', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  userId: uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  type: notificationType('type').notNull(),
+  title: text('title').notNull(),
+  body: text('body'),
+  link: text('link'),
+  actorId: uuid('actor_id').references(() => users.id),
+  relatedId: uuid('related_id'),
+  readAt: timestamp('read_at', { withTimezone: true }),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+}, (t) => ({
+  userUnread: index('idx_notifications_user_unread').on(t.userId, t.createdAt),
+}));
+
+export const streaks = pgTable('streaks', {
+  userId: uuid('user_id').primaryKey().references(() => users.id, { onDelete: 'cascade' }),
+  currentDays: integer('current_days').notNull().default(0),
+  longestDays: integer('longest_days').notNull().default(0),
+  lastActiveOn: timestamp('last_active_on', { mode: 'date' }),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const referrals = pgTable('referrals', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  referrerId: uuid('referrer_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  code: text('code').notNull().unique(),
+  redeemedBy: uuid('redeemed_by').references(() => users.id),
+  redeemedAt: timestamp('redeemed_at', { withTimezone: true }),
+  rewardedAt: timestamp('rewarded_at', { withTimezone: true }),
+  referrerRewardCoins: integer('referrer_reward_coins').notNull().default(100),
+  redeemerRewardCoins: integer('redeemer_reward_coins').notNull().default(100),
+  status: referralStatus('status').notNull().default('pending'),
+  expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+}, (t) => ({
+  byReferrer: index('idx_referrals_referrer').on(t.referrerId),
+  byRedeemedBy: index('idx_referrals_redeemed_by').on(t.redeemedBy),
+}));
+
+export const badgeAwards = pgTable('badge_awards', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  userId: uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  code: badgeCode('code').notNull(),
+  awardedAt: timestamp('awarded_at', { withTimezone: true }).notNull().defaultNow(),
+}, (t) => ({
+  uniqUserCode: unique().on(t.userId, t.code),
+  byUser: index('idx_badge_awards_user').on(t.userId),
+}));
+
+// ============================================================================
 // SOCIAL
 // ============================================================================
 
@@ -332,55 +389,6 @@ export type SquadRank = typeof squadRanks.$inferSelect;
 export type LobbyPass = typeof lobbyPasses.$inferSelect;
 export type LobbyPassBid = typeof lobbyPassBids.$inferSelect;
 export type Review = typeof reviews.$inferSelect;
-
-// ============================================================================
-// PHASE 3 — Notifications, streaks, referrals, badges
-// ============================================================================
-
-export const notifications = pgTable('notifications', {
-  id: uuid('id').primaryKey().defaultRandom(),
-  userId: uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
-  type: notificationType('type').notNull(),
-  title: text('title').notNull(),
-  body: text('body'),
-  link: text('link'),
-  actorId: uuid('actor_id').references(() => users.id),
-  relatedId: uuid('related_id'),
-  readAt: timestamp('read_at', { withTimezone: true }),
-  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
-});
-
-export const streaks = pgTable('streaks', {
-  userId: uuid('user_id').primaryKey().references(() => users.id, { onDelete: 'cascade' }),
-  currentDays: integer('current_days').notNull().default(0),
-  longestDays: integer('longest_days').notNull().default(0),
-  lastActiveOn: text('last_active_on'), // YYYY-MM-DD as text for simplicity
-  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
-});
-
-export const referrals = pgTable('referrals', {
-  id: uuid('id').primaryKey().defaultRandom(),
-  referrerId: uuid('referrer_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
-  code: text('code').notNull().unique(),
-  redeemedBy: uuid('redeemed_by').references(() => users.id),
-  redeemedAt: timestamp('redeemed_at', { withTimezone: true }),
-  rewardedAt: timestamp('rewarded_at', { withTimezone: true }),
-  referrerRewardCoins: integer('referrer_reward_coins').notNull().default(100),
-  redeemerRewardCoins: integer('redeemer_reward_coins').notNull().default(100),
-  status: referralStatus('status').notNull().default('pending'),
-  expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),
-  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
-});
-
-export const badgeAwards = pgTable('badge_awards', {
-  id: uuid('id').primaryKey().defaultRandom(),
-  userId: uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
-  code: badgeCode('code').notNull(),
-  awardedAt: timestamp('awarded_at', { withTimezone: true }).notNull().defaultNow(),
-}, (t) => ({
-  uniqUserBadge: unique().on(t.userId, t.code),
-}));
-
 export type Notification = typeof notifications.$inferSelect;
 export type Streak = typeof streaks.$inferSelect;
 export type Referral = typeof referrals.$inferSelect;

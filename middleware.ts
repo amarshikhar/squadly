@@ -1,5 +1,4 @@
 import { NextResponse } from 'next/server';
-import type { NextRequest } from 'next/server';
 import NextAuth from 'next-auth';
 import { authConfig } from '@/lib/auth/config';
 
@@ -12,61 +11,35 @@ const PUBLIC_PATHS = [
   '/terms',
   '/privacy',
   '/api/auth',
-  '/api/webhooks',
 ];
 
-// Page routes that require auth (redirect to /signin)
-const PROTECTED_PAGE_PATTERNS = [
+// Routes that require an authenticated user
+const PROTECTED_PATTERNS = [
   /^\/vault/,
   /^\/home/,
-  /^\/goals/,
+  /^\/goals\/create/,
   /^\/passes\/create/,
-  /^\/requests/,
-  /^\/payouts/,
-  /^\/profile/,
-  /^\/services\/create/,
-  /^\/services$/,
-  /^\/messages/,
-  /^\/notifications/,
-  /^\/referrals/,
-];
-
-// API routes where auth is enforced per-method inside the handler
-// GET is public for discovery; POST/PATCH/DELETE require auth (checked in handler)
-const PUBLIC_API_PATTERNS = [
   /^\/api\/services$/,
   /^\/api\/goals/,
   /^\/api\/bids/,
-  /^\/api\/passes/,
+  /^\/api\/coins/,
 ];
 
 export default auth((req) => {
   const { pathname } = req.nextUrl;
-  const isApi = pathname.startsWith('/api/');
 
-  // Allow public paths
-  if (PUBLIC_PATHS.some((p) => pathname === p || pathname.startsWith(p + '/'))) {
+  // Allow public paths and creator handle pages (e.g. /scout)
+  if (
+    PUBLIC_PATHS.some((p) => pathname === p || pathname.startsWith(p + '/')) ||
+    !PROTECTED_PATTERNS.some((rx) => rx.test(pathname))
+  ) {
     return NextResponse.next();
   }
 
-  // Allow public API routes (auth checked per-method in handlers)
-  if (isApi && PUBLIC_API_PATTERNS.some((rx) => rx.test(pathname))) {
-    return NextResponse.next();
-  }
-
-  // Protected pages: redirect to signin
-  if (!isApi && PROTECTED_PAGE_PATTERNS.some((rx) => rx.test(pathname))) {
-    if (!req.auth?.user) {
-      const signin = new URL('/signin', req.url);
-      signin.searchParams.set('next', pathname);
-      return NextResponse.redirect(signin);
-    }
-  }
-
-  // Protected API routes: return 401 JSON (not redirect)
-  if (isApi && !req.auth?.user) {
-    // Let the handler deal with auth — it returns proper 401 JSON
-    return NextResponse.next();
+  if (!req.auth?.user) {
+    const signin = new URL('/signin', req.url);
+    signin.searchParams.set('next', pathname);
+    return NextResponse.redirect(signin);
   }
 
   return NextResponse.next();
