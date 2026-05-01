@@ -12,6 +12,11 @@
  *
  * Uses a dedicated creator + multiple fan users seeded via direct DB writes.
  *
+ * ⚠️  CRON NOTE: /api/jobs/close-passes only fires automatically on Vercel (every 1 min).
+ *     Locally it never fires on its own. This test forces expiry via a direct DB UPDATE
+ *     then calls the endpoint directly. If CRON_SECRET is set in .env.local, the endpoint
+ *     requires  Authorization: Bearer <CRON_SECRET>  — add it to the GET call below.
+ *
  * Usage:  node test-lobby-pass.mjs
  * Requires: dev server running on localhost:3000
  */

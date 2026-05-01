@@ -281,6 +281,9 @@ async function main() {
 
   // A5: Webhook endpoints reject unsigned
   header('Webhooks — reject unsigned');
+  // NOTE: /api/jobs/close-passes is NOT tested here — it requires a DB state setup
+  // (expired passes) and Authorization: Bearer $CRON_SECRET if CRON_SECRET is set.
+  // Use test-lobby-pass.mjs for full close-pass coverage.
   const webhookRoutes = apiRoutes.filter(a => a.urlPath.includes('/webhooks/'));
   for (const a of webhookRoutes) {
     const r = await http('POST', a.urlPath, { body: { type: 'test.event' } });
