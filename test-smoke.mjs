@@ -124,10 +124,10 @@ const PROTECTED_PAGE_PATTERNS = [
   /^\/vault/, /^\/home/, /^\/goals/, /^\/passes\/create/,
   /^\/requests/, /^\/payouts/, /^\/profile/, /^\/services\/create/,
   /^\/services$/, /^\/messages/,
-  /^\/notifications/, /^\/referrals/,
+  /^\/notifications/, /^\/referrals/, /^\/admin/,
 ];
 const PUBLIC_API_PATTERNS = [/^\/api\/services$/, /^\/api\/goals/, /^\/api\/bids/, /^\/api\/passes/];
-const SKIP_API_PATTERNS = [/^\/api\/auth/, /^\/api\/webhooks/, /^\/api\/jobs/];
+const SKIP_API_PATTERNS = [/^\/api\/auth/, /^\/api\/webhooks/, /^\/api\/jobs/, /^\/api\/admin/];
 
 function isProtectedPage(path) {
   return PROTECTED_PAGE_PATTERNS.some(rx => rx.test(path));
@@ -353,6 +353,8 @@ async function main() {
   for (const p of authPages) {
     const r = await http('GET', p.urlPath, { cookie });
     if (r.status === 200) ok(`GET ${p.urlPath}  (200)`);
+    else if ([307, 302].includes(r.status) && p.urlPath.startsWith('/admin'))
+      ok(`GET ${p.urlPath} → redirect (non-admin user, expected)`);
     else if ([307, 302].includes(r.status)) ko(`GET ${p.urlPath} → redirect (JWT rejected)`);
     else ko(`GET ${p.urlPath}  (${r.status})`);
   }
