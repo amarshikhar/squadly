@@ -6,7 +6,7 @@ export const metadata: Metadata = {
   description: 'Squadly Privacy Policy · v2026-05-01',
 };
 
-export const PRIVACY_VERSION = '2026-05-01';
+const PRIVACY_VERSION = '2026-05-01';
 
 export default function PrivacyPage() {
   return (
