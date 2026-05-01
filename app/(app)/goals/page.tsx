@@ -56,8 +56,10 @@ export default async function GoalsPage() {
                     </div>
                   </div>
 
-                  <Button className="mt-5 w-full" disabled={hours === 0}>
-                    {hours > 0 ? 'Contribute coins' : 'Closed'}
+                  <Button asChild className="mt-5 w-full" disabled={hours === 0}>
+                    <Link href={`/goals/${g.id}`}>
+                      {hours > 0 ? 'Contribute coins' : 'View goal'}
+                    </Link>
                   </Button>
                 </Card>
               );

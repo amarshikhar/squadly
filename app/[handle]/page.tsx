@@ -63,7 +63,11 @@ export default async function StreamerHub({ params }: { params: { handle: string
               )}
             </div>
           </div>
-          <Button variant="outline">Tip @{user.handle}</Button>
+          <div className="flex flex-col gap-2">
+            <Button asChild variant="outline">
+              <Link href={`/${user.handle}/squad`}>View squad →</Link>
+            </Button>
+          </div>
         </div>
 
         <div className="mt-16 grid gap-12 lg:grid-cols-[1.6fr_1fr]">

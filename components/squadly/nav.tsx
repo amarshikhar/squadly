@@ -24,6 +24,7 @@ export async function Nav() {
           {session?.user && (
             <>
               <Link href="/requests" className="transition-colors hover:text-neon-cyan">Requests</Link>
+              <Link href="/messages" className="transition-colors hover:text-neon-cyan">DMs</Link>
               <Link href="/payouts" className="transition-colors hover:text-neon-cyan">Payouts</Link>
               <Link href="/home" className="transition-colors hover:text-neon-cyan">Hub</Link>
             </>

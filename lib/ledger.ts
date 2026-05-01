@@ -17,6 +17,7 @@ import {
   squadGoals,
   squadGoalContributions,
   squadRanks,
+  messageThreads,
   type Transaction,
 } from './db/schema';
 import { tierForCoins } from './utils';
@@ -244,6 +245,17 @@ export async function settleCompletedRequest(requestId: string) {
       description: 'Platform commission',
       settledAt: new Date(),
     });
+
+    // Auto-unlock DM thread between creator and buyer (idempotent via unique constraint)
+    await tx
+      .insert(messageThreads)
+      .values({
+        creatorId: req.creatorId,
+        fanId: req.buyerId,
+        unlockSource: 'service_request',
+        unlockRefId: req.id,
+      })
+      .onConflictDoNothing();
   });
 }
 

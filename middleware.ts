@@ -19,12 +19,14 @@ const PUBLIC_PATHS = [
 const PROTECTED_PAGE_PATTERNS = [
   /^\/vault/,
   /^\/home/,
-  /^\/goals\/create/,
+  /^\/goals/,
   /^\/passes\/create/,
   /^\/requests/,
   /^\/payouts/,
   /^\/profile/,
   /^\/services\/create/,
+  /^\/services$/,
+  /^\/messages/,
 ];
 
 // API routes where auth is enforced per-method inside the handler
@@ -33,6 +35,7 @@ const PUBLIC_API_PATTERNS = [
   /^\/api\/services$/,
   /^\/api\/goals/,
   /^\/api\/bids/,
+  /^\/api\/passes/,
 ];
 
 export default auth((req) => {
