@@ -4,6 +4,7 @@ import { auth } from '@/lib/auth';
 import { contributeToGoal } from '@/lib/ledger';
 import { getGoalById } from '@/lib/db/queries';
 import { publish, channels, events } from '@/lib/pusher';
+import { rateLimit } from '@/lib/rate-limit';
 
 const ContributeSchema = z.object({
   coins: z.number().int().min(1).max(50000),
@@ -21,6 +22,14 @@ const ContributeSchema = z.object({
 export async function POST(request: Request, { params }: { params: { id: string } }) {
   const session = await auth();
   if (!session?.user?.id) return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
+
+  const rl = await rateLimit('contribute', session.user.id);
+  if (!rl.allowed) {
+    return NextResponse.json(
+      { error: 'rate_limited', retryAfter: rl.retryAfter },
+      { status: 429, headers: { 'retry-after': String(rl.retryAfter) } },
+    );
+  }
 
   const body = await request.json();
   const parse = ContributeSchema.safeParse(body);

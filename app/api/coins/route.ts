@@ -4,6 +4,8 @@ import { db, coinPurchases } from '@/lib/db';
 import { auth } from '@/lib/auth';
 import { createOrder } from '@/lib/payments/razorpay';
 import { COIN_RATE, MIN_TOPUP_INR } from '@/lib/constants';
+import { rateLimit } from '@/lib/rate-limit';
+import { requireAge } from '@/lib/age';
 
 const TopUpSchema = z.object({
   inrAmount: z.number().int().min(MIN_TOPUP_INR),
@@ -18,6 +20,23 @@ export async function POST(request: Request) {
   const session = await auth();
   if (!session?.user?.id) {
     return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
+  }
+
+  // Rate limit: 10 top-ups per hour per user
+  const rl = await rateLimit('coins', session.user.id);
+  if (!rl.allowed) {
+    return NextResponse.json(
+      { error: 'rate_limited', retryAfter: rl.retryAfter },
+      { status: 429, headers: { 'retry-after': String(rl.retryAfter) } },
+    );
+  }
+
+  // Age gate: 18+ required for coin purchase
+  try {
+    await requireAge(session.user.id);
+  } catch (e) {
+    if (e instanceof Response) return e;
+    throw e;
   }
 
   const body = await request.json();

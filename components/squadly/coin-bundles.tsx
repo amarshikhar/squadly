@@ -43,6 +43,13 @@ export function CoinBundles({ className }: CoinBundlesProps) {
 
       if (!res.ok) {
         const err = await res.json();
+        if (err.error === 'age_verification_required') {
+          router.push('/profile/age?next=/vault');
+          return;
+        }
+        if (err.error === 'rate_limited') {
+          throw new Error(`Too many top-up attempts. Try again in ${err.retryAfter}s.`);
+        }
         throw new Error(err.error ?? 'failed');
       }
 

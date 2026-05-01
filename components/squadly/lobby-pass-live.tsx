@@ -100,7 +100,16 @@ export function LobbyPassLive(props: Props) {
         body: JSON.stringify({ coinAmount: bidAmount }),
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.message ?? data.error ?? 'failed');
+      if (!res.ok) {
+        if (data.error === 'age_verification_required') {
+          router.push(`/profile/age?next=/passes/${props.passId}`);
+          return;
+        }
+        if (data.error === 'rate_limited') {
+          throw new Error(`Slow down — try again in ${data.retryAfter}s.`);
+        }
+        throw new Error(data.message ?? data.error ?? 'failed');
+      }
       router.refresh();
     } catch (e: any) {
       setError(e.message);

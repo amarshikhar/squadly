@@ -4,6 +4,7 @@ import { Nav } from '@/components/squadly/nav';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { RequestActions } from '@/components/squadly/request-actions';
+import { RaiseDisputeButton } from '@/components/squadly/raise-dispute-button';
 import { getRequestById } from '@/lib/db/queries';
 import { formatInr, GAME_LABELS } from '@/lib/utils';
 import { format } from 'date-fns';
@@ -108,6 +109,18 @@ export default async function RequestDetail({ params }: { params: { id: string }
                 isCreator={isCreator}
                 isBuyer={isBuyer}
               />
+
+              {isBuyer && ['accepted', 'in_progress', 'completed'].includes(r.status) && (
+                <div className="mt-4 border-t border-border pt-4">
+                  <RaiseDisputeButton requestId={r.id} />
+                </div>
+              )}
+
+              {r.status === 'disputed' && (
+                <div className="mt-4 rounded-lg border border-border-magenta bg-neon-magenta/10 p-3 text-center text-sm text-neon-magenta">
+                  This request is under dispute. Admin is reviewing.
+                </div>
+              )}
             </Card>
           </div>
         </div>

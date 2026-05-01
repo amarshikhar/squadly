@@ -5,6 +5,7 @@ const nextConfig = {
     serverActions: {
       bodySizeLimit: '4mb',
     },
+    serverComponentsExternalPackages: ['postgres'],
   },
   images: {
     remotePatterns: [
@@ -15,11 +16,12 @@ const nextConfig = {
     ],
   },
   webpack: (config, { isServer }) => {
-    if (isServer) {
-      // postgres.js tries to import cloudflare:sockets for Workers support;
-      // tell webpack to treat it as an external so it doesn't choke locally.
-      config.externals.push('cloudflare:sockets');
-    }
+    // postgres package includes a Cloudflare polyfill that references cloudflare:sockets
+    // This is not needed in Next.js and breaks middleware compilation
+    config.resolve.fallback = {
+      ...config.resolve.fallback,
+      'cloudflare:sockets': false,
+    };
     return config;
   },
 };

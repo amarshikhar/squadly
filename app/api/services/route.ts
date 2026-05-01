@@ -47,7 +47,7 @@ export async function POST(request: Request) {
     .values({
       ...parse.data,
       creatorId: session.user.id,
-      status: 'draft',
+      status: 'live',
     })
     .returning();
 

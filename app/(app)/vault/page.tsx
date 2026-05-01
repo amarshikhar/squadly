@@ -3,12 +3,32 @@ import { redirect } from 'next/navigation';
 import { Nav } from '@/components/squadly/nav';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
-import { COIN_BUNDLES } from '@/lib/constants';
+import { CoinBundles } from '@/components/squadly/coin-bundles';
+import { getVaultBalance, listTransactions } from '@/lib/db/queries';
+import { formatInr, formatCoins } from '@/lib/utils';
+import { format } from 'date-fns';
+
+export const dynamic = 'force-dynamic';
+
+const TX_LABEL: Record<string, string> = {
+  coin_purchase: 'Coin top-up',
+  service_payment: 'Service paid',
+  service_payout: 'Service payout',
+  tip: 'Tip',
+  goal_contribution: 'Goal contribution',
+  lobby_pass_bid: 'Lobby Pass bid',
+  refund: 'Refund',
+  platform_fee: 'Platform fee',
+};
 
 export default async function VaultPage() {
   const session = await auth();
-  if (!session?.user) redirect('/signin?next=/vault');
+  if (!session?.user?.id) redirect('/signin?next=/vault');
+
+  const [vault, txns] = await Promise.all([
+    getVaultBalance(session.user.id),
+    listTransactions(session.user.id, 30),
+  ]);
 
   return (
     <div className="min-h-screen">
@@ -21,38 +41,67 @@ export default async function VaultPage() {
         <div className="mt-10 grid gap-5 md:grid-cols-2">
           <Card className="p-7">
             <div className="font-mono text-xs uppercase tracking-widest text-text-2">INR Balance</div>
-            <div className="mt-2 font-display text-4xl text-neon-cyan glow-cyan-text">₹0</div>
-            <Button variant="outline" size="sm" className="mt-4">Withdraw</Button>
+            <div className="mt-2 font-display text-4xl text-neon-cyan glow-cyan-text">
+              {formatInr(vault.inrBalance)}
+            </div>
+            {vault.inrPending > 0 && (
+              <div className="mt-2 font-mono text-xs text-text-3">
+                + {formatInr(vault.inrPending)} pending settlement
+              </div>
+            )}
           </Card>
           <Card className="p-7">
             <div className="font-mono text-xs uppercase tracking-widest text-text-2">Coins</div>
-            <div className="mt-2 font-display text-4xl text-neon-magenta glow-magenta-text">0</div>
-            <Button variant="magenta" size="sm" className="mt-4">Top up</Button>
+            <div className="mt-2 font-display text-4xl text-neon-magenta glow-magenta-text">
+              {formatCoins(vault.coinBalance)}
+            </div>
+            <div className="mt-2 font-mono text-xs text-text-3">Spend on Squad Goals · Lobby Pass · Tips</div>
           </Card>
         </div>
 
-        {/* Coin bundles */}
+        {/* Coin top-up bundles */}
         <h2 className="mt-16 font-display text-2xl text-text-0">Top up coins</h2>
         <p className="mt-2 text-sm text-text-2">UPI · Cards · Net Banking via Razorpay</p>
-
-        <div className="mt-6 grid gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5">
-          {COIN_BUNDLES.map((b) => (
-            <Card key={b.inr} className="p-5 text-center transition-all hover:border-border-bright hover:-translate-y-1 cursor-pointer">
-              <div className="font-display text-3xl text-neon-magenta">{b.coins}</div>
-              <div className="mt-1 font-mono text-xs uppercase text-text-2">coins</div>
-              {b.bonus > 0 && (
-                <div className="mt-2 font-mono text-xs text-neon-green">+{b.bonus} bonus</div>
-              )}
-              <div className="mt-4 border-t border-border pt-4 font-display text-xl text-text-0">₹{b.inr}</div>
-            </Card>
-          ))}
-        </div>
+        <CoinBundles className="mt-6" />
 
         {/* Transactions */}
         <h2 className="mt-16 font-display text-2xl text-text-0">Transactions</h2>
-        <Card className="mt-4 p-12 text-center text-text-3">
-          <p className="font-mono text-sm">No transactions yet. Top up coins to get started.</p>
-        </Card>
+        {txns.length === 0 ? (
+          <Card className="mt-4 p-12 text-center text-text-3">
+            <p className="font-mono text-sm">No transactions yet. Top up coins to get started.</p>
+          </Card>
+        ) : (
+          <Card className="mt-4 overflow-hidden">
+            <div className="divide-y divide-border">
+              {txns.map((tx) => {
+                const inr = tx.amountInr ?? 0;
+                const coins = tx.amountCoins ?? 0;
+                return (
+                  <div key={tx.id} className="flex items-center justify-between px-6 py-4">
+                    <div>
+                      <div className="font-mono text-sm text-text-0">{TX_LABEL[tx.type] ?? tx.type}</div>
+                      <div className="font-mono text-[11px] text-text-3 uppercase tracking-widest">
+                        {format(new Date(tx.createdAt), 'dd MMM HH:mm')} · {tx.status}
+                      </div>
+                    </div>
+                    <div className="text-right font-mono text-sm">
+                      {inr !== 0 && (
+                        <div className={inr > 0 ? 'text-neon-green' : 'text-text-1'}>
+                          {inr > 0 ? '+' : ''}{formatInr(inr)}
+                        </div>
+                      )}
+                      {coins !== 0 && (
+                        <div className={coins > 0 ? 'text-neon-cyan' : 'text-neon-magenta'}>
+                          {coins > 0 ? '+' : ''}{formatCoins(coins)} coins
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </Card>
+        )}
       </main>
     </div>
   );

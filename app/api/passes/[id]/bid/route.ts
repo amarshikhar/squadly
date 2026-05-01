@@ -5,12 +5,29 @@ import { db, users, lobbyPassBids } from '@/lib/db';
 import { auth } from '@/lib/auth';
 import { placeBid, LobbyPassError } from '@/lib/lobby-pass';
 import { publish, channels, events } from '@/lib/pusher';
+import { rateLimit } from '@/lib/rate-limit';
+import { requireAge } from '@/lib/age';
 
 const BidSchema = z.object({ coinAmount: z.number().int().positive() });
 
 export async function POST(request: Request, { params }: { params: { id: string } }) {
   const session = await auth();
   if (!session?.user?.id) return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
+
+  const rl = await rateLimit('bid', session.user.id);
+  if (!rl.allowed) {
+    return NextResponse.json(
+      { error: 'rate_limited', retryAfter: rl.retryAfter },
+      { status: 429, headers: { 'retry-after': String(rl.retryAfter) } },
+    );
+  }
+
+  try {
+    await requireAge(session.user.id);
+  } catch (e) {
+    if (e instanceof Response) return e;
+    throw e;
+  }
 
   const body = await request.json();
   const parse = BidSchema.safeParse(body);
@@ -23,7 +40,6 @@ export async function POST(request: Request, { params }: { params: { id: string 
       coinAmount: parse.data.coinAmount,
     });
 
-    // Determine top bid for broadcast
     const top = result.topBids[0];
     const bidder = top
       ? await db.query.users.findFirst({

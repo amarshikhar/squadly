@@ -1,12 +1,14 @@
 import { NextResponse } from 'next/server';
-import { db, coinPurchases, vaultBalances, transactions } from '@/lib/db';
+import { db, coinPurchases, serviceRequests } from '@/lib/db';
 import { verifyWebhookSignature } from '@/lib/payments/razorpay';
-import { eq, sql } from 'drizzle-orm';
+import { creditCoins, capturePayment } from '@/lib/ledger';
+import { eq } from 'drizzle-orm';
 
 /**
  * Razorpay webhook handler.
- * Handles `payment.captured` events for coin purchases and service payments.
- * Verifies signature, then updates ledger atomically.
+ * Handles:
+ *   - `payment.captured` for coin purchases → credits coins to user vault
+ *   - `payment.captured` for service requests → records payment capture (creator payout deferred to completion)
  */
 export async function POST(request: Request) {
   const signature = request.headers.get('x-razorpay-signature');
@@ -19,47 +21,54 @@ export async function POST(request: Request) {
   const event = JSON.parse(rawBody);
   console.info('[razorpay webhook]', event.event);
 
-  if (event.event === 'payment.captured') {
-    const payment = event.payload.payment.entity;
-    const orderId = payment.order_id;
+  if (event.event !== 'payment.captured') {
+    return NextResponse.json({ ok: true, ignored: true });
+  }
 
-    // Find matching coin_purchase
-    const purchase = await db.query.coinPurchases.findFirst({
-      where: eq(coinPurchases.gatewayRef, orderId),
-    });
+  const payment = event.payload.payment.entity;
+  const orderId = payment.order_id;
 
-    if (!purchase || purchase.status === 'success') {
-      return NextResponse.json({ ok: true, skipped: true });
+  // 1. Coin purchase?
+  const purchase = await db.query.coinPurchases.findFirst({
+    where: eq(coinPurchases.gatewayRef, orderId),
+  });
+  if (purchase) {
+    if (purchase.status === 'success') {
+      return NextResponse.json({ ok: true, idempotent: true });
     }
-
-    // TODO: wrap in a transaction — Drizzle txn API:
-    // await db.transaction(async (tx) => { ... })
-
-    // Mark purchase success
+    await creditCoins({
+      userId: purchase.userId,
+      coins: purchase.coins,
+      inrPaid: purchase.inrPaid,
+      gatewayRef: orderId,
+      gateway: 'razorpay',
+    });
     await db
       .update(coinPurchases)
       .set({ status: 'success', settledAt: new Date() })
       .where(eq(coinPurchases.id, purchase.id));
-
-    // Credit coins to vault
-    await db
-      .update(vaultBalances)
-      .set({ coinBalance: sql`${vaultBalances.coinBalance} + ${purchase.coins}` })
-      .where(eq(vaultBalances.userId, purchase.userId));
-
-    // Append ledger entry
-    await db.insert(transactions).values({
-      userId: purchase.userId,
-      type: 'coin_purchase',
-      amountInr: -purchase.inrPaid,
-      amountCoins: purchase.coins,
-      status: 'success',
-      gateway: 'razorpay',
-      gatewayRef: orderId,
-      description: `Coin top-up: ${purchase.coins} coins`,
-      settledAt: new Date(),
-    });
+    return NextResponse.json({ ok: true, type: 'coin_purchase' });
   }
 
-  return NextResponse.json({ ok: true });
+  // 2. Service request payment?
+  const requestId = payment?.notes?.request_id;
+  if (requestId) {
+    const req = await db.query.serviceRequests.findFirst({
+      where: eq(serviceRequests.id, requestId),
+    });
+    if (req) {
+      await capturePayment({
+        requestId: req.id,
+        userId: req.buyerId,
+        amountInr: payment.amount,
+        gatewayRef: orderId,
+        gateway: 'razorpay',
+      });
+      return NextResponse.json({ ok: true, type: 'service_payment' });
+    }
+  }
+
+  // Unrecognized payment — log but don't fail
+  console.warn('[razorpay webhook] unrecognized payment', orderId);
+  return NextResponse.json({ ok: true, unmatched: true });
 }

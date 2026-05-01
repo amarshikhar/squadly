@@ -4,6 +4,8 @@ import { eq, sql } from 'drizzle-orm';
 import { db, vaultBalances, transactions, users, providerProfiles } from '@/lib/db';
 import { auth } from '@/lib/auth';
 import { ensureContact, createFundAccountUPI, createPayout } from '@/lib/payments/razorpay-x';
+import { rateLimit } from '@/lib/rate-limit';
+import { requireAge } from '@/lib/age';
 
 const WithdrawSchema = z.object({
   amountInr: z.number().int().min(50000), // min ₹500 in paise
@@ -23,6 +25,21 @@ const WithdrawSchema = z.object({
 export async function POST(request: Request) {
   const session = await auth();
   if (!session?.user?.id) return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
+
+  const rl = await rateLimit('withdraw', session.user.id);
+  if (!rl.allowed) {
+    return NextResponse.json(
+      { error: 'rate_limited', retryAfter: rl.retryAfter },
+      { status: 429, headers: { 'retry-after': String(rl.retryAfter) } },
+    );
+  }
+
+  try {
+    await requireAge(session.user.id);
+  } catch (e) {
+    if (e instanceof Response) return e;
+    throw e;
+  }
 
   const body = await request.json();
   const parse = WithdrawSchema.safeParse(body);

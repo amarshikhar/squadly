@@ -1,29 +1,21 @@
+import Link from 'next/link';
 import { Nav } from '@/components/squadly/nav';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { GoalBar } from '@/components/squadly/goal-bar';
-import Link from 'next/link';
+import { listActiveGoals } from '@/lib/db/queries';
+import { GAME_LABELS } from '@/lib/utils';
 
-export default function GoalsPage() {
-  // Placeholder data
-  const goals = [
-    {
-      id: '1', creator: 'scout', game: 'BGMI',
-      title: 'Conqueror push tonight — full lobby, no leave',
-      current: 1250, target: 1500, contributors: 47, hoursLeft: 2,
-    },
-    {
-      id: '2', creator: 'gauravigl', game: 'Valorant',
-      title: 'Surrender-free Saturday: 10 wins streak',
-      current: 1840, target: 3000, contributors: 23, hoursLeft: 5,
-    },
-    {
-      id: '3', creator: 'riyaheadshot', game: 'Free Fire',
-      title: 'Free Fire Heroic dash · 2 hour grind',
-      current: 800, target: 800, contributors: 18, hoursLeft: 0,
-    },
-  ];
+export const revalidate = 15;
+
+function hoursLeft(deadline: Date): number {
+  const ms = new Date(deadline).getTime() - Date.now();
+  return Math.max(0, Math.round(ms / (60 * 60 * 1000)));
+}
+
+export default async function GoalsPage() {
+  const goals = await listActiveGoals();
 
   return (
     <div className="min-h-screen">
@@ -35,34 +27,45 @@ export default function GoalsPage() {
           Crowd-fund your favorite creator&apos;s next challenge. Hit the goal, watch them deliver.
         </p>
 
-        <div className="mt-10 grid gap-6 md:grid-cols-2">
-          {goals.map((g) => (
-            <Card key={g.id} className="p-7">
-              <div className="flex items-center justify-between">
-                <Link href={`/${g.creator}`} className="font-mono text-sm text-neon-cyan hover:underline">
-                  @{g.creator}
-                </Link>
-                <Badge variant="amber">{g.game}</Badge>
-              </div>
-              <h3 className="mt-3 font-display text-lg leading-tight text-text-0">{g.title}</h3>
+        {goals.length === 0 ? (
+          <Card className="mt-10 p-12 text-center text-text-3">
+            <p className="font-mono text-sm">No active goals right now. Check back soon.</p>
+          </Card>
+        ) : (
+          <div className="mt-10 grid gap-6 md:grid-cols-2">
+            {goals.map(({ goal: g, creator }) => {
+              const hours = hoursLeft(g.deadline);
+              return (
+                <Card key={g.id} className="p-7">
+                  <div className="flex items-center justify-between">
+                    <Link href={`/${creator.handle}`} className="font-mono text-sm text-neon-cyan hover:underline">
+                      @{creator.handle}
+                    </Link>
+                  </div>
+                  <h3 className="mt-3 font-display text-lg leading-tight text-text-0">{g.title}</h3>
+                  {g.description && <p className="mt-2 text-sm text-text-2">{g.description}</p>}
 
-              <div className="mt-6">
-                <GoalBar current={g.current} target={g.target} />
-              </div>
+                  <div className="mt-6">
+                    <GoalBar current={g.currentCoins} target={g.targetCoins} />
+                  </div>
 
-              <div className="mt-5 flex items-center justify-between border-t border-border pt-4 text-sm">
-                <div className="font-mono text-text-2">{g.contributors} contributors</div>
-                <div className="font-mono text-neon-cyan">
-                  {g.hoursLeft > 0 ? `${g.hoursLeft}h left` : 'Funded'}
-                </div>
-              </div>
+                  <div className="mt-5 flex items-center justify-between border-t border-border pt-4 text-sm">
+                    <div className="font-mono text-text-2">{g.contributorsCount} contributors</div>
+                    <div className="font-mono text-neon-cyan">
+                      {hours > 0 ? `${hours}h left` : 'Closing now'}
+                    </div>
+                  </div>
 
-              <Button className="mt-5 w-full" variant={g.hoursLeft > 0 ? 'default' : 'secondary'} disabled={g.hoursLeft === 0}>
-                {g.hoursLeft > 0 ? 'Contribute coins' : 'Goal funded'}
-              </Button>
-            </Card>
-          ))}
-        </div>
+                  <Button asChild className="mt-5 w-full" disabled={hours === 0}>
+                    <Link href={`/goals/${g.id}`}>
+                      {hours > 0 ? 'Contribute coins' : 'View goal'}
+                    </Link>
+                  </Button>
+                </Card>
+              );
+            })}
+          </div>
+        )}
       </main>
     </div>
   );
