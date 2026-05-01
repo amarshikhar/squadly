@@ -2,7 +2,7 @@
   "crons": [
     {
       "path": "/api/jobs/close-passes",
-      "schedule": "* * * * *"
+      "schedule": "0 0 * * *"
     }
   ]
 }
