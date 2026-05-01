@@ -6,7 +6,7 @@ export const metadata: Metadata = {
   description: 'Squadly Terms of Service · v2026-05-01',
 };
 
-export const TERMS_VERSION = '2026-05-01';
+const TERMS_VERSION = '2026-05-01';
 
 export default function TermsPage() {
   return (
