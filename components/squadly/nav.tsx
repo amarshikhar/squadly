@@ -4,6 +4,7 @@ import { auth } from '@/lib/auth';
 import { getVaultBalance } from '@/lib/db/queries';
 import { formatCoins } from '@/lib/utils';
 import { NotificationsBell } from './notifications-bell';
+import { MobileMenu } from './mobile-menu';
 
 export async function Nav() {
   const session = await auth();
@@ -19,6 +20,7 @@ export async function Nav() {
           <span className="text-lg">Squadly</span>
         </Link>
 
+        {/* Desktop nav links — hidden on mobile */}
         <div className="hidden items-center gap-6 text-sm text-text-2 md:flex">
           <Link href="/services" className="transition-colors hover:text-neon-cyan">Browse</Link>
           <Link href="/goals" className="transition-colors hover:text-neon-cyan">Goals</Link>
@@ -32,9 +34,11 @@ export async function Nav() {
           )}
         </div>
 
-        <div className="flex items-center gap-3">
+        {/* Right side */}
+        <div className="flex items-center gap-2 sm:gap-3">
           {session?.user ? (
             <>
+              {/* Coin pill — visible on tablet+ */}
               <Link
                 href="/vault"
                 className="hidden items-center gap-2 rounded-lg border border-border bg-bg-1 px-3 py-1.5 font-mono text-xs text-text-1 transition-colors hover:border-border-bright sm:flex"
@@ -42,20 +46,37 @@ export async function Nav() {
                 <span className="text-neon-cyan">●</span>
                 {formatCoins(vault?.coinBalance ?? 0)}
               </Link>
+
+              {/* Bell — always visible */}
               <NotificationsBell />
+
+              {/* Username link — desktop only */}
               <Link
                 href="/home"
-                className="font-mono text-sm text-text-0 hover:text-neon-cyan"
+                className="hidden font-mono text-sm text-text-0 hover:text-neon-cyan md:block"
               >
                 {session.user.name?.split(' ')[0] ?? 'You'}
               </Link>
+
+              {/* Mobile hamburger — mobile only */}
+              <MobileMenu
+                isAuthed={true}
+                userName={session.user.name}
+                coinBalance={vault?.coinBalance ?? 0}
+              />
             </>
           ) : (
             <>
-              <Link href="/signin" className="text-sm text-text-2 hover:text-neon-cyan">Sign in</Link>
-              <Button asChild size="sm">
+              <Link
+                href="/signin"
+                className="hidden text-sm text-text-2 hover:text-neon-cyan md:inline"
+              >
+                Sign in
+              </Link>
+              <Button asChild size="sm" className="hidden md:inline-flex">
                 <Link href="/signin">Get started</Link>
               </Button>
+              <MobileMenu isAuthed={false} />
             </>
           )}
         </div>
