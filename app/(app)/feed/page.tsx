@@ -13,9 +13,12 @@ import { GAME_LABELS, formatInr, formatCoins } from '@/lib/utils';
 
 export const revalidate = 30;
 
+const FEED_SERVICE_LIMIT = 6;
+const FRESH_WINDOW_DAYS = 14;
+
 export default async function FeedPage() {
   // Trending services (recent + active passes + ending-soon goals)
-  const [endingGoals, openPasses, freshServices] = await Promise.all([
+  const [endingGoals, openPasses, freshFirst] = await Promise.all([
     listActiveGoals(),
     db
       .select({
@@ -27,10 +30,31 @@ export default async function FeedPage() {
       .where(and(eq(lobbyPasses.status, 'open'), gt(lobbyPasses.endsAt, new Date())))
       .orderBy(desc(lobbyPasses.createdAt))
       .limit(8),
-    // "Fresh" = created in the last 14 days, sorted newest first.
-    // Falls back to plain recent ordering on the listing if fewer than 6 match.
-    listServices({ limit: 6, sort: 'recent', since: new Date(Date.now() - 14 * 24 * 60 * 60 * 1000) }),
+    // First pass: services created in the last 14 days, newest first.
+    listServices({
+      limit: FEED_SERVICE_LIMIT,
+      sort: 'recent',
+      since: new Date(Date.now() - FRESH_WINDOW_DAYS * 24 * 60 * 60 * 1000),
+    }),
   ]);
+
+  // Fallback that the original code commented but never actually implemented:
+  // if fewer than `FEED_SERVICE_LIMIT` services were posted in the fresh window,
+  // top up the section with the most-recent services regardless of age. Without
+  // this, the feed appears almost empty for projects whose seed/test services
+  // were created more than 14 days ago.
+  let recentServices: Awaited<ReturnType<typeof listServices>> = freshFirst;
+  if (freshFirst.length < FEED_SERVICE_LIMIT) {
+    const topUp = await listServices({ limit: FEED_SERVICE_LIMIT, sort: 'recent' });
+    const seen = new Set(freshFirst.map((s) => s.service.id));
+    for (const row of topUp) {
+      if (recentServices.length >= FEED_SERVICE_LIMIT) break;
+      if (!seen.has(row.service.id)) {
+        recentServices = recentServices.concat(row);
+        seen.add(row.service.id);
+      }
+    }
+  }
 
   // Top current bid per pass (best-effort; one query per pass)
   const passBidStats = await Promise.all(
@@ -51,6 +75,10 @@ export default async function FeedPage() {
     .sort((a, b) => new Date(a.goal.deadline).getTime() - new Date(b.goal.deadline).getTime())
     .slice(0, 6);
 
+  const allServiceIdsAreFresh =
+    recentServices.length > 0 &&
+    recentServices.every((s) => freshFirst.some((f) => f.service.id === s.service.id));
+
   return (
     <div className="min-h-screen">
       <Nav />
@@ -64,9 +92,14 @@ export default async function FeedPage() {
         {/* Live bidding */}
         {openPasses.length > 0 && (
           <section className="mt-12">
-            <h2 className="mb-4 font-display text-2xl text-text-0">
-              <span className="text-neon-magenta">●</span> Live bidding
-            </h2>
+            <div className="mb-4 flex items-baseline justify-between">
+              <h2 className="font-display text-2xl text-text-0">
+                <span className="text-neon-magenta">●</span> Live bidding
+              </h2>
+              <Link href="/services?kind=passes" className="font-mono text-xs text-text-3 hover:text-neon-magenta">
+                Browse all →
+              </Link>
+            </div>
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
               {openPasses.map(({ pass, creator }) => (
                 <Card key={pass.id} className="p-5 transition-all hover:border-border-magenta hover:-translate-y-1">
@@ -98,9 +131,14 @@ export default async function FeedPage() {
         {/* Ending-soon goals */}
         {sortedGoals.length > 0 && (
           <section className="mt-16">
-            <h2 className="mb-4 font-display text-2xl text-text-0">
-              <span className="text-neon-cyan">●</span> Squad Goals ending soon
-            </h2>
+            <div className="mb-4 flex items-baseline justify-between">
+              <h2 className="font-display text-2xl text-text-0">
+                <span className="text-neon-cyan">●</span> Squad Goals ending soon
+              </h2>
+              <Link href="/services?kind=goals" className="font-mono text-xs text-text-3 hover:text-neon-cyan">
+                Browse all →
+              </Link>
+            </div>
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
               {sortedGoals.map(({ goal, creator }) => (
                 <Card key={goal.id} className="p-5">
@@ -126,15 +164,25 @@ export default async function FeedPage() {
           </section>
         )}
 
-        {/* Fresh services */}
-        {freshServices.length > 0 && (
+        {/* Recent services — prefers last 14 days, falls back to most-recent overall */}
+        {recentServices.length > 0 && (
           <section className="mt-16">
-            <h2 className="mb-4 font-display text-2xl text-text-0">
-              <span className="text-neon-amber">●</span> Fresh services
-              <span className="ml-3 align-middle font-mono text-[11px] text-text-3">listed in the last 14 days</span>
-            </h2>
+            <div className="mb-4 flex items-baseline justify-between">
+              <h2 className="font-display text-2xl text-text-0">
+                <span className="text-neon-amber">●</span>{' '}
+                {allServiceIdsAreFresh ? 'Fresh services' : 'Recent services'}
+                <span className="ml-3 align-middle font-mono text-[11px] text-text-3">
+                  {allServiceIdsAreFresh
+                    ? `listed in the last ${FRESH_WINDOW_DAYS} days`
+                    : `newest ${FEED_SERVICE_LIMIT}`}
+                </span>
+              </h2>
+              <Link href="/services" className="font-mono text-xs text-text-3 hover:text-neon-amber">
+                Browse all →
+              </Link>
+            </div>
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-              {freshServices.slice(0, 6).map(({ service, creator }) => (
+              {recentServices.slice(0, FEED_SERVICE_LIMIT).map(({ service, creator }) => (
                 <Card key={service.id} className="p-5">
                   <div className="flex items-center justify-between">
                     <Badge variant="amber">{GAME_LABELS[service.game] ?? service.game}</Badge>
