@@ -2,7 +2,7 @@
  * Typed query helpers for Squadly.
  * Centralizes Drizzle queries used across pages and API routes.
  */
-import { eq, and, or, desc, asc, sql, gt, lt, inArray, ilike } from 'drizzle-orm';
+import { eq, and, or, desc, asc, sql, gt, gte, lt, inArray, ilike } from 'drizzle-orm';
 import { db } from './index';
 import {
   users,
@@ -77,7 +77,7 @@ export async function listServices(filters: ServiceFilters = {}) {
   if (filters.minPriceInr !== undefined) conditions.push(sql`${services.priceInr} >= ${filters.minPriceInr}`);
   if (filters.maxPriceInr !== undefined) conditions.push(sql`${services.priceInr} <= ${filters.maxPriceInr}`);
   if (filters.verifiedOnly) conditions.push(eq(users.isVerified, true));
-  if (filters.since) conditions.push(sql`${services.createdAt} >= ${filters.since}`);
+  if (filters.since) conditions.push(gte(services.createdAt, filters.since));
 
   let q = db
     .select({
