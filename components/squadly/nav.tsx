@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import Image from 'next/image';
 import { Button } from '@/components/ui/button';
 import { auth } from '@/lib/auth';
 import { getVaultBalance } from '@/lib/db/queries';
@@ -13,15 +14,18 @@ export async function Nav() {
   const vault = session?.user?.id ? await getVaultBalance(session.user.id) : null;
 
   return (
-    <nav className="sticky top-0 z-50 border-b border-border bg-bg-0/80 backdrop-blur-md">
-      {/* Edge-to-edge layout: logo flush left, profile flush right */}
+    <nav className="sticky top-0 z-50 border-b border-border bg-bg-0/85 backdrop-blur-md">
       <div className="flex h-16 items-center gap-3 px-4 sm:gap-4 sm:px-6">
-        {/* LEFT: logo (CSS gradient mark + wordmark) */}
-        <Link href="/" className="flex flex-shrink-0 items-center gap-2.5" aria-label="Squadly home">
-          <span className="grid h-9 w-9 place-items-center rounded-lg bg-grad-brand font-display text-lg font-bold text-black shadow-glow-cyan">
-            S
-          </span>
-          <span className="font-display text-xl font-bold tracking-tight text-text-0">Squadly</span>
+        {/* LEFT: logo (cropped, transparent-blending PNG) */}
+        <Link href="/" className="flex flex-shrink-0 items-center" aria-label="Squadly home">
+          <Image
+            src="/squadly-logo.png"
+            alt="Squadly"
+            width={160}
+            height={43}
+            priority
+            className="h-9 w-auto sm:h-10"
+          />
         </Link>
 
         {/* LEFT: nav links — desktop only (≥lg) */}
@@ -41,7 +45,7 @@ export async function Nav() {
           )}
         </div>
 
-        {/* Mobile-only top-bar search (between logo and right cluster) */}
+        {/* Mobile-only top-bar search */}
         <div className="flex-1 lg:hidden">
           <SearchBar />
         </div>
@@ -50,7 +54,6 @@ export async function Nav() {
         <div className="ml-auto flex flex-shrink-0 items-center gap-2 sm:gap-3">
           {session?.user ? (
             <>
-              {/* Coin pill — visible sm+ */}
               <Link
                 href="/vault"
                 className="hidden items-center gap-2 rounded-lg border border-border bg-bg-1 px-3 py-1.5 font-mono text-xs text-text-1 transition-colors hover:border-border-bright sm:flex"
@@ -59,18 +62,12 @@ export async function Nav() {
                 {formatCoins(vault?.coinBalance ?? 0)}
               </Link>
 
-              {/* Desktop search — visible lg+ only */}
               <div className="hidden w-56 lg:block xl:w-72">
                 <SearchBar />
               </div>
 
-              {/* Bell */}
               <NotificationsBell />
-
-              {/* Profile (Shikhar) — flush right edge */}
               <UserMenu userName={session.user.name} />
-
-              {/* Mobile hamburger — <lg only */}
               <MobileMenu
                 isAuthed={true}
                 userName={session.user.name}

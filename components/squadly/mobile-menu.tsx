@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
 import { signOutAction } from '@/app/actions/auth';
 
 interface MobileMenuProps {
@@ -13,7 +12,6 @@ interface MobileMenuProps {
 
 export function MobileMenu({ isAuthed, userName, coinBalance }: MobileMenuProps) {
   const [open, setOpen] = useState(false);
-  const router = useRouter();
 
   // Lock body scroll while drawer is open
   useEffect(() => {
@@ -52,40 +50,53 @@ export function MobileMenu({ isAuthed, userName, coinBalance }: MobileMenuProps)
         </svg>
       </button>
 
-      {/* Drawer */}
+      {/* Drawer overlay — fixed full-viewport using dvh (handles iOS Safari URL bar) */}
       {open && (
-        <div className="fixed inset-0 z-[80] lg:hidden" role="dialog" aria-modal="true">
+        <div
+          className="fixed inset-0 z-[80] lg:hidden"
+          style={{ height: '100dvh' }}
+          role="dialog"
+          aria-modal="true"
+        >
           {/* Backdrop */}
           <button
             onClick={() => setOpen(false)}
             aria-label="Close menu"
-            className="absolute inset-0 bg-black/70 backdrop-blur-sm"
+            className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+            style={{ height: '100dvh' }}
           />
 
-          {/* Drawer panel — translucent, scrollable */}
-          <div className="absolute right-0 top-0 flex h-full w-72 flex-col border-l border-border bg-bg-1/95 shadow-card backdrop-blur-md">
-            {/* Sticky header — stays visible while content scrolls */}
-            <div className="flex flex-shrink-0 items-center justify-between border-b border-border bg-bg-1/95 p-5 backdrop-blur-md">
+          {/* Drawer panel — wider (88% on phone, max 380px), full height, translucent */}
+          <div
+            className="absolute right-0 top-0 flex w-[min(88%,380px)] flex-col border-l border-border-bright/40 bg-bg-1/85 shadow-card backdrop-blur-2xl"
+            style={{
+              height: '100dvh',
+              WebkitBackdropFilter: 'blur(24px)',
+              backdropFilter: 'blur(24px)',
+            }}
+          >
+            {/* Sticky header */}
+            <div className="flex flex-shrink-0 items-center justify-between border-b border-border bg-bg-1/50 p-5 backdrop-blur-md">
               <span className="font-display text-lg font-bold text-text-0">Menu</span>
               <button
                 onClick={() => setOpen(false)}
                 aria-label="Close"
-                className="grid h-8 w-8 place-items-center rounded-lg text-text-2 hover:text-neon-cyan"
+                className="grid h-9 w-9 place-items-center rounded-lg text-text-2 hover:bg-bg-2 hover:text-neon-cyan"
               >
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" width="18" height="18">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" width="20" height="20">
                   <line x1="18" y1="6" x2="6" y2="18" />
                   <line x1="6" y1="6" x2="18" y2="18" />
                 </svg>
               </button>
             </div>
 
-            {/* Scrollable content area */}
-            <div className="flex flex-1 flex-col gap-1 overflow-y-auto p-5">
+            {/* Scrollable content */}
+            <div className="flex flex-1 flex-col gap-1 overflow-y-auto overscroll-contain p-5">
               {isAuthed && coinBalance !== undefined && (
                 <Link
                   href="/vault"
                   onClick={() => setOpen(false)}
-                  className="mb-3 flex items-center justify-between rounded-lg border border-border-bright bg-neon-cyan/5 px-4 py-3 font-mono text-sm text-text-0"
+                  className="mb-4 flex items-center justify-between rounded-lg border border-border-bright bg-neon-cyan/10 px-4 py-3 font-mono text-sm text-text-0"
                 >
                   <span className="text-text-2">Coins</span>
                   <span className="text-neon-cyan">● {coinBalance.toLocaleString()}</span>
@@ -107,10 +118,10 @@ export function MobileMenu({ isAuthed, userName, coinBalance }: MobileMenuProps)
                   <NavLink href="/payouts" onClick={() => setOpen(false)}>Payouts</NavLink>
                   <NavLink href="/profile" onClick={() => setOpen(false)}>Profile</NavLink>
                   <NavLink href="/home" onClick={() => setOpen(false)} accent>Streamer Hub</NavLink>
-                  <form action={signOutAction} className="mt-2">
+                  <form action={signOutAction} className="mt-3">
                     <button
                       type="submit"
-                      className="w-full rounded-lg border border-border px-4 py-3 text-left text-base text-neon-magenta hover:bg-bg-2"
+                      className="w-full rounded-lg border border-border bg-bg-2/50 px-4 py-3 text-left text-base text-neon-magenta hover:bg-bg-2"
                     >
                       Sign out
                     </button>
@@ -121,19 +132,19 @@ export function MobileMenu({ isAuthed, userName, coinBalance }: MobileMenuProps)
               )}
             </div>
 
-            {/* Sticky footer — terms/privacy always visible */}
-            <div className="flex-shrink-0 border-t border-border bg-bg-1/95 p-4 backdrop-blur-md">
+            {/* Sticky footer */}
+            <div className="flex flex-shrink-0 items-center gap-4 border-t border-border bg-bg-1/50 p-4 backdrop-blur-md">
               <Link
                 href="/terms"
                 onClick={() => setOpen(false)}
-                className="block px-2 py-1 font-mono text-xs text-text-3 hover:text-text-1"
+                className="font-mono text-xs text-text-3 hover:text-text-1"
               >
                 Terms
               </Link>
               <Link
                 href="/privacy"
                 onClick={() => setOpen(false)}
-                className="block px-2 py-1 font-mono text-xs text-text-3 hover:text-text-1"
+                className="font-mono text-xs text-text-3 hover:text-text-1"
               >
                 Privacy
               </Link>
