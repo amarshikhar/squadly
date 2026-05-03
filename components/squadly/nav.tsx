@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import Image from 'next/image';
 import { Button } from '@/components/ui/button';
 import { auth } from '@/lib/auth';
 import { getVaultBalance } from '@/lib/db/queries';
@@ -13,21 +14,21 @@ export async function Nav() {
   const vault = session?.user?.id ? await getVaultBalance(session.user.id) : null;
 
   return (
-    <nav className="sticky top-0 z-50 border-b border-border bg-bg-0/70 backdrop-blur-md">
+    <nav className="sticky top-0 z-50 border-b border-border bg-bg-0/80 backdrop-blur-md">
       <div className="container-x flex h-16 items-center gap-3 sm:gap-4">
-        <Link href="/" className="flex flex-shrink-0 items-center gap-2 font-display font-bold text-text-0">
-          <span className="grid h-8 w-8 place-items-center rounded-lg bg-grad-brand font-bold text-black shadow-glow-cyan">
-            S
-          </span>
-          <span className="hidden text-lg sm:inline">Squadly</span>
+        {/* LEFT: logo */}
+        <Link href="/" className="flex flex-shrink-0 items-center" aria-label="Squadly home">
+          <Image
+            src="/Logo1.png"
+            alt="Squadly"
+            width={120}
+            height={32}
+            priority
+            className="h-9 w-auto"
+          />
         </Link>
 
-        {/* Search bar — visible on tablet+, expands to fill available space */}
-        <div className="hidden flex-1 max-w-md md:block">
-          <SearchBar />
-        </div>
-
-        {/* Desktop nav links — hidden on mobile, Feed-first ordering */}
+        {/* LEFT: nav links — desktop only */}
         <div className="hidden items-center gap-5 text-sm text-text-2 lg:flex">
           {session?.user && (
             <Link href="/feed" className="transition-colors hover:text-neon-cyan">Feed</Link>
@@ -44,8 +45,13 @@ export async function Nav() {
           )}
         </div>
 
-        {/* Right side */}
-        <div className="ml-auto flex items-center gap-2 sm:gap-3">
+        {/* Mobile-only top-bar search (between logo and right cluster) */}
+        <div className="flex-1 lg:hidden">
+          <SearchBar />
+        </div>
+
+        {/* RIGHT: coins, search, bell, profile (Shikhar at right edge) */}
+        <div className="ml-auto flex flex-shrink-0 items-center gap-2 sm:gap-3">
           {session?.user ? (
             <>
               {/* Coin pill — visible on tablet+ */}
@@ -57,10 +63,15 @@ export async function Nav() {
                 {formatCoins(vault?.coinBalance ?? 0)}
               </Link>
 
+              {/* Desktop search — visible on lg+ only (mobile has its own above) */}
+              <div className="hidden w-56 lg:block xl:w-72">
+                <SearchBar />
+              </div>
+
               {/* Bell — always visible */}
               <NotificationsBell />
 
-              {/* Username dropdown — desktop only */}
+              {/* Profile dropdown — desktop only (right edge) */}
               <UserMenu userName={session.user.name} />
 
               {/* Mobile hamburger — mobile only */}
@@ -72,6 +83,10 @@ export async function Nav() {
             </>
           ) : (
             <>
+              {/* Desktop search for guests too */}
+              <div className="hidden w-56 lg:block xl:w-72">
+                <SearchBar />
+              </div>
               <Link
                 href="/signin"
                 className="hidden text-sm text-text-2 hover:text-neon-cyan md:inline"
