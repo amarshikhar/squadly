@@ -82,7 +82,7 @@ export default function LandingPage() {
             <div className="mt-6 flex items-end justify-between gap-2">
               <RankBadge tier="recruit" size="sm" showName />
               <RankBadge tier="soldier" size="sm" showName />
-              <RankBadge tier="veteran" size="md" showName />
+              <RankBadge tier="veteran" size="sm" showName />
               <RankBadge tier="legend" size="sm" showName />
               <RankBadge tier="commander" size="sm" showName />
             </div>

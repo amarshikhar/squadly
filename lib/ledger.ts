@@ -13,6 +13,7 @@ import { db } from './db';
 import {
   vaultBalances,
   transactions,
+  coinPurchases,
   serviceRequests,
   squadGoals,
   squadGoalContributions,
@@ -56,6 +57,31 @@ export async function creditCoins(opts: {
   return db.transaction(async (tx) => {
     await ensureVault(opts.userId, tx);
 
+    // Idempotency guard: coin_purchases.gateway_ref is UNIQUE — a duplicate
+    // webhook delivery for the same payment will short-circuit here instead of
+    // double-crediting the vault.
+    const [purchase] = await tx
+      .insert(coinPurchases)
+      .values({
+        userId: opts.userId,
+        coins: opts.coins,
+        inrPaid: opts.inrPaid,
+        gateway: opts.gateway,
+        gatewayRef: opts.gatewayRef,
+        status: 'success',
+        settledAt: new Date(),
+      })
+      .onConflictDoNothing({ target: coinPurchases.gatewayRef })
+      .returning();
+
+    if (!purchase) {
+      // Already processed — return the original transaction, do not credit again.
+      const existing = await tx.query.transactions.findFirst({
+        where: and(eq(transactions.gatewayRef, opts.gatewayRef), eq(transactions.type, 'coin_purchase')),
+      });
+      return existing ?? null;
+    }
+
     await tx
       .update(vaultBalances)
       .set({ coinBalance: sql`${vaultBalances.coinBalance} + ${opts.coins}` })
@@ -75,6 +101,10 @@ export async function creditCoins(opts: {
         settledAt: new Date(),
       })
       .returning();
+
+    await tx.update(coinPurchases)
+      .set({ transactionId: txRow.id })
+      .where(eq(coinPurchases.id, purchase.id));
 
     return txRow;
   });
@@ -214,6 +244,16 @@ export async function settleCompletedRequest(requestId: string) {
     if (!req) throw new Error('request_not_found');
     if (req.status !== 'completed') throw new Error('request_not_completed');
 
+    // Idempotency guard: if a service_payout txn already exists for this
+    // request, the settlement has already been processed — don't double-credit.
+    const existingPayout = await tx.query.transactions.findFirst({
+      where: and(
+        eq(transactions.relatedRequestId, req.id),
+        eq(transactions.type, 'service_payout'),
+      ),
+    });
+    if (existingPayout) return;
+
     await ensureVault(req.creatorId, tx);
 
     // Credit creator (price - platform fee)
@@ -290,6 +330,15 @@ export async function refundRequest(requestId: string, reason: string) {
       where: eq(serviceRequests.id, requestId),
     });
     if (!req) throw new Error('request_not_found');
+
+    // Idempotency guard: a request can only be refunded once.
+    const existingRefund = await tx.query.transactions.findFirst({
+      where: and(
+        eq(transactions.relatedRequestId, req.id),
+        eq(transactions.type, 'refund'),
+      ),
+    });
+    if (existingRefund) return;
 
     // TODO: trigger Razorpay refund API call here; on webhook success record the actual refund txn
     await tx.insert(transactions).values({

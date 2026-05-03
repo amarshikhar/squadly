@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { signOutAction } from '@/app/actions/auth';
 
 interface MobileMenuProps {
   isAuthed: boolean;
@@ -83,6 +84,14 @@ export function MobileMenu({ isAuthed, userName, coinBalance }: MobileMenuProps)
                 <NavLink href="/payouts" onClick={() => setOpen(false)}>Payouts</NavLink>
                 <NavLink href="/profile" onClick={() => setOpen(false)}>Profile</NavLink>
                 <NavLink href="/home" onClick={() => setOpen(false)} accent>Streamer Hub</NavLink>
+                <form action={signOutAction} className="mt-2">
+                  <button
+                    type="submit"
+                    className="w-full rounded-lg border border-border px-4 py-3 text-left text-base text-neon-magenta hover:bg-bg-2"
+                  >
+                    Sign out
+                  </button>
+                </form>
               </>
             ) : (
               <NavLink href="/signin" onClick={() => setOpen(false)} accent>Sign in</NavLink>

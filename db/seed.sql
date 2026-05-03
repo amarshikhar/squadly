@@ -64,8 +64,9 @@ INSERT INTO vault_balances (user_id, inr_balance, coin_balance) VALUES
 
 -- Squad Goals -----------------------------------------------------------------
 INSERT INTO squad_goals (id, creator_id, title, description, target_coins, current_coins, contributors_count, status, deadline) VALUES
-    ('b1111111-bbbb-1111-bbbb-111111111111', '11111111-1111-1111-1111-111111111111', 'Conqueror push tonight — full lobby, no leave', 'If we hit 1500 coins by 10pm IST, I go for back-to-back chickens until Conqueror.', 1500, 1250, 47, 'active', now() + interval '2 hours 14 minutes'),
-    ('b2222222-bbbb-2222-bbbb-222222222222', '22222222-2222-2222-2222-222222222222', 'Surrender-free Saturday: 10 wins streak', 'Push to win 10 ranked games in a row — if I lose any, I refund all coins.', 3000, 1840, 23, 'active', now() + interval '5 hours'),
+    ('b1111111-bbbb-1111-bbbb-111111111111', '11111111-1111-1111-1111-111111111111', 'Conqueror push tonight — full lobby, no leave', 'If we hit 1500 coins by 10pm IST, I go for back-to-back chickens until Conqueror.', 1500, 1250, 47, 'active', now() + interval '7 days'),
+    ('b2222222-bbbb-2222-bbbb-222222222222', '22222222-2222-2222-2222-222222222222', 'Surrender-free Saturday: 10 wins streak', 'Push to win 10 ranked games in a row — if I lose any, I refund all coins.', 3000, 1840, 23, 'active', now() + interval '14 days'),
+    ('b4444444-bbbb-4444-bbbb-444444444444', '44444444-4444-4444-4444-444444444444', 'BGMI sniper grind · top frag every game', 'Hit 800 coins and I run sniper-only for 5 games straight, no AR pickup allowed.', 800, 410, 31, 'active', now() + interval '3 days'),
     ('b3333333-bbbb-3333-bbbb-333333333333', '33333333-3333-3333-3333-333333333333', 'Free Fire Heroic dash · 2 hour grind', 'Two-hour push session if we hit goal.', 800, 800, 18, 'funded', now() - interval '1 hour');
 
 -- Goal contributions ----------------------------------------------------------
@@ -83,8 +84,8 @@ INSERT INTO squad_ranks (creator_id, fan_id, total_coins_spent, period_coins_spe
 
 -- Lobby Passes ----------------------------------------------------------------
 INSERT INTO lobby_passes (id, creator_id, title, description, game, slot_count, min_bid_coins, ends_at, session_at, session_duration_min, starts_at) VALUES
-    ('c1111111-cccc-1111-cccc-111111111111', '22222222-2222-2222-2222-222222222222', 'Pro Squad Night — full party play', '4-hour squad with me + my pro stack. Tonight 9pm IST.', 'valorant', 3, 200, now() + interval '42 minutes', now() + interval '6 hours', 240, now() - interval '4 hours'),
-    ('c2222222-cccc-2222-cccc-222222222222', '11111111-1111-1111-1111-111111111111', 'BGMI Conqueror Lobby', '2-hour duo session at Conqueror lobby this Friday.', 'bgmi', 2, 300, now() + interval '1 day', now() + interval '3 days', 120, now());
+    ('c1111111-cccc-1111-cccc-111111111111', '22222222-2222-2222-2222-222222222222', 'Pro Squad Night — full party play', '4-hour squad with me + my pro stack. Tonight 9pm IST.', 'valorant', 3, 200, now() + interval '2 days', now() + interval '4 days', 240, now() - interval '4 hours'),
+    ('c2222222-cccc-2222-cccc-222222222222', '11111111-1111-1111-1111-111111111111', 'BGMI Conqueror Lobby', '2-hour duo session at Conqueror lobby this Friday.', 'bgmi', 2, 300, now() + interval '5 days', now() + interval '7 days', 120, now());
 
 -- Lobby Pass Bids -------------------------------------------------------------
 INSERT INTO lobby_pass_bids (pass_id, bidder_id, coin_amount, status) VALUES
@@ -102,6 +103,28 @@ INSERT INTO service_requests (id, service_id, creator_id, buyer_id, status, pric
 INSERT INTO reviews (request_id, creator_id, reviewer_id, rating, body) VALUES
     ('d1111111-dddd-1111-dddd-111111111111', '11111111-1111-1111-1111-111111111111', 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', 5, 'Insane session. Fixed my crosshair placement in 20 minutes. Pushed Crown the same week.'),
     ('d2222222-dddd-2222-dddd-222222222222', '22222222-2222-2222-2222-222222222222', 'cccccccc-cccc-cccc-cccc-cccccccccccc', 5, 'Best Valorant coach I''ve worked with. Worth every rupee.');
+
+-- Message Threads -------------------------------------------------------------
+INSERT INTO message_threads (id, creator_id, fan_id, unlock_source, unlock_ref_id, last_message_at) VALUES
+    ('e1111111-eeee-1111-eeee-111111111111', '11111111-1111-1111-1111-111111111111', 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', 'service_request', 'd1111111-dddd-1111-dddd-111111111111', now() - interval '2 days'),
+    ('e2222222-eeee-2222-eeee-222222222222', '22222222-2222-2222-2222-222222222222', 'cccccccc-cccc-cccc-cccc-cccccccccccc', 'service_request', 'd2222222-dddd-2222-dddd-222222222222', now() - interval '6 days'),
+    ('e3333333-eeee-3333-eeee-333333333333', '22222222-2222-2222-2222-222222222222', 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb', 'lobby_pass_won', 'c1111111-cccc-1111-cccc-111111111111', now() - interval '3 hours'),
+    ('e4444444-eeee-4444-eeee-444444444444', '11111111-1111-1111-1111-111111111111', 'eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee', 'commander_tier', NULL, now() - interval '1 day');
+
+-- Messages --------------------------------------------------------------------
+INSERT INTO messages (thread_id, sender_id, body, sent_at) VALUES
+    ('e1111111-eeee-1111-eeee-111111111111', 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', 'gg that was insane, learnt so much from the rotation drill', now() - interval '3 days'),
+    ('e1111111-eeee-1111-eeee-111111111111', '11111111-1111-1111-1111-111111111111', 'Glad it clicked. Practice the late-zone push for next week.', now() - interval '2 days 22 hours'),
+    ('e1111111-eeee-1111-eeee-111111111111', 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', 'will do, hit Crown V already 🔥', now() - interval '2 days'),
+
+    ('e2222222-eeee-2222-eeee-222222222222', 'cccccccc-cccc-cccc-cccc-cccccccccccc', 'aim drills are gold, my crosshair feels so much cleaner now', now() - interval '7 days'),
+    ('e2222222-eeee-2222-eeee-222222222222', '22222222-2222-2222-2222-222222222222', 'Run the prefire routine 15 min daily, you''ll plateau without it.', now() - interval '6 days'),
+
+    ('e3333333-eeee-3333-eeee-333333333333', '22222222-2222-2222-2222-222222222222', 'You won the slot for Pro Squad Night — see you at 9pm. Drop your Riot ID.', now() - interval '5 hours'),
+    ('e3333333-eeee-3333-eeee-333333333333', 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb', 'deepak#sniper, locked in', now() - interval '3 hours'),
+
+    ('e4444444-eeee-4444-eeee-444444444444', '11111111-1111-1111-1111-111111111111', 'Commander tier locked in 🎖️ — DM unlock granted. What do you wanna play this weekend?', now() - interval '1 day 4 hours'),
+    ('e4444444-eeee-4444-eeee-444444444444', 'eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee', 'duo TPP, lets push to Ace lobby', now() - interval '1 day');
 
 -- Re-enable RLS
 SET LOCAL session_replication_role = 'origin';

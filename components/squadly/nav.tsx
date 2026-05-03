@@ -5,6 +5,7 @@ import { getVaultBalance } from '@/lib/db/queries';
 import { formatCoins } from '@/lib/utils';
 import { NotificationsBell } from './notifications-bell';
 import { MobileMenu } from './mobile-menu';
+import { UserMenu } from './user-menu';
 
 export async function Nav() {
   const session = await auth();
@@ -50,13 +51,8 @@ export async function Nav() {
               {/* Bell — always visible */}
               <NotificationsBell />
 
-              {/* Username link — desktop only */}
-              <Link
-                href="/home"
-                className="hidden font-mono text-sm text-text-0 hover:text-neon-cyan md:block"
-              >
-                {session.user.name?.split(' ')[0] ?? 'You'}
-              </Link>
+              {/* Username dropdown — desktop only */}
+              <UserMenu userName={session.user.name} />
 
               {/* Mobile hamburger — mobile only */}
               <MobileMenu
