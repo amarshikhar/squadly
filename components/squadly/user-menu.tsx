@@ -1,31 +1,33 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { signOutAction } from '@/app/actions/auth';
+import { useExclusiveMenu } from '@/lib/use-exclusive-menu';
 
 interface UserMenuProps {
   userName: string | null | undefined;
 }
 
 export function UserMenu({ userName }: UserMenuProps) {
-  const [open, setOpen] = useState(false);
+  const { open, toggle, close } = useExclusiveMenu('user-menu');
   const ref = useRef<HTMLDivElement>(null);
   const firstName = userName?.split(' ')[0] ?? 'You';
 
+  // Close on outside click
   useEffect(() => {
     if (!open) return;
     function onDoc(e: MouseEvent) {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+      if (ref.current && !ref.current.contains(e.target as Node)) close();
     }
     document.addEventListener('mousedown', onDoc);
     return () => document.removeEventListener('mousedown', onDoc);
-  }, [open]);
+  }, [open, close]);
 
   return (
-    <div ref={ref} className="relative hidden md:block">
+    <div ref={ref} className="relative hidden lg:block">
       <button
-        onClick={() => setOpen((v) => !v)}
+        onClick={toggle}
         className="font-mono text-sm text-text-0 hover:text-neon-cyan"
         aria-haspopup="menu"
         aria-expanded={open}
@@ -40,21 +42,21 @@ export function UserMenu({ userName }: UserMenuProps) {
         >
           <Link
             href="/home"
-            onClick={() => setOpen(false)}
+            onClick={close}
             className="block px-4 py-2.5 text-sm text-text-1 hover:bg-bg-2 hover:text-neon-cyan"
           >
             Streamer Hub
           </Link>
           <Link
             href="/profile"
-            onClick={() => setOpen(false)}
+            onClick={close}
             className="block px-4 py-2.5 text-sm text-text-1 hover:bg-bg-2 hover:text-neon-cyan"
           >
             Profile
           </Link>
           <Link
             href="/vault"
-            onClick={() => setOpen(false)}
+            onClick={close}
             className="block px-4 py-2.5 text-sm text-text-1 hover:bg-bg-2 hover:text-neon-cyan"
           >
             Vault
