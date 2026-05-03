@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { eq, and, desc, sql } from 'drizzle-orm';
+import { eq, and, desc, sql, inArray } from 'drizzle-orm';
 import { Nav } from '@/components/squadly/nav';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -26,7 +26,7 @@ export default async function PassesIndex({ searchParams }: { searchParams: { ga
       })
       .from(lobbyPassBids)
       .where(and(
-        sql`${lobbyPassBids.passId} = ANY(${passIds})`,
+        inArray(lobbyPassBids.passId, passIds),
         sql`${lobbyPassBids.status} IN ('winning','active')`,
       ))
       .groupBy(lobbyPassBids.passId);

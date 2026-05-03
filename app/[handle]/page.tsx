@@ -17,7 +17,7 @@ import {
   listOpenPasses,
 } from '@/lib/db/queries';
 import { db, lobbyPassBids } from '@/lib/db';
-import { eq, desc, and, sql } from 'drizzle-orm';
+import { eq, desc, and, sql, inArray } from 'drizzle-orm';
 import { formatCoins } from '@/lib/utils';
 import { formatDistanceToNow } from 'date-fns';
 import type { RankTier } from '@/lib/utils';
@@ -68,7 +68,7 @@ export default async function StreamerHub({ params }: { params: { handle: string
       })
       .from(lobbyPassBids)
       .where(and(
-        sql`${lobbyPassBids.passId} = ANY(${passIds})`,
+        inArray(lobbyPassBids.passId, passIds),
         sql`${lobbyPassBids.status} IN ('winning','active')`,
       ))
       .groupBy(lobbyPassBids.passId);

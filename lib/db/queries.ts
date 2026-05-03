@@ -343,13 +343,26 @@ export async function listOpenPasses(opts: { creatorId?: string; limit?: number;
 
 // ============================================================================
 // GLOBAL SEARCH — users + services + goals + passes
+// Matches by entity text (title/description/handle/name) AND game label,
+// so "Free Fire" surfaces all free_fire services even if their titles don't
+// literally contain that string.
 // ============================================================================
+
+import { GAME_LABELS } from '../utils';
 
 export async function searchAll(query: string, limit = 8) {
   if (!query || query.trim().length < 2) {
     return { users: [], services: [], goals: [], passes: [] };
   }
   const q = `%${query.trim()}%`;
+  const lc = query.trim().toLowerCase();
+
+  // Match game enum codes if the query (e.g. "Free Fire", "valorant", "BGMI")
+  // is a substring of any game label.
+  const matchingGameCodes = Object.entries(GAME_LABELS)
+    .filter(([, label]) => label.toLowerCase().includes(lc))
+    .map(([code]) => code);
+  const gameMatch = matchingGameCodes.length > 0;
 
   const [matchUsers, matchServices, matchGoals, matchPasses] = await Promise.all([
     // Users — by handle or display name
@@ -361,7 +374,7 @@ export async function searchAll(query: string, limit = 8) {
       columns: { id: true, handle: true, displayName: true, avatarUrl: true, isVerified: true, isProvider: true },
       limit,
     }),
-    // Services — by title or description
+    // Services — by title, description, OR matching game label
     db
       .select({
         service: services,
@@ -371,10 +384,16 @@ export async function searchAll(query: string, limit = 8) {
       .innerJoin(users, eq(users.id, services.creatorId))
       .where(and(
         eq(services.status, 'live'),
-        or(ilike(services.title, q), ilike(services.description, q)),
+        gameMatch
+          ? or(
+              ilike(services.title, q),
+              ilike(services.description, q),
+              inArray(services.game, matchingGameCodes as any),
+            )
+          : or(ilike(services.title, q), ilike(services.description, q)),
       ))
       .limit(limit),
-    // Goals — by title
+    // Goals — by title (no game column on goals to match)
     db
       .select({
         goal: squadGoals,
@@ -384,7 +403,7 @@ export async function searchAll(query: string, limit = 8) {
       .innerJoin(users, eq(users.id, squadGoals.creatorId))
       .where(and(eq(squadGoals.status, 'active'), ilike(squadGoals.title, q)))
       .limit(limit),
-    // Passes — by title
+    // Passes — by title OR matching game label
     db
       .select({
         pass: lobbyPasses,
@@ -392,7 +411,12 @@ export async function searchAll(query: string, limit = 8) {
       })
       .from(lobbyPasses)
       .innerJoin(users, eq(users.id, lobbyPasses.creatorId))
-      .where(and(eq(lobbyPasses.status, 'open'), ilike(lobbyPasses.title, q)))
+      .where(and(
+        eq(lobbyPasses.status, 'open'),
+        gameMatch
+          ? or(ilike(lobbyPasses.title, q), inArray(lobbyPasses.game, matchingGameCodes as any))
+          : ilike(lobbyPasses.title, q),
+      ))
       .limit(limit),
   ]);
 
