@@ -5,6 +5,7 @@ import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { BookButton } from '@/components/squadly/book-button';
+import { ShareServiceButton } from '@/components/squadly/share-service-button';
 import { formatInr, GAME_LABELS, platformFee } from '@/lib/utils';
 import { getServiceById } from '@/lib/db/queries';
 
@@ -104,6 +105,7 @@ export default async function ServiceDetail({ params }: { params: { id: string }
               </div>
 
               <BookButton serviceId={service.id} priceInr={service.priceInr} />
+              <ShareServiceButton serviceId={service.id} title={service.title} handle={creator.handle} />
 
               <p className="mt-4 text-center text-xs text-text-3">
                 Pay with UPI · Cards · Net Banking. Refundable if creator cancels.

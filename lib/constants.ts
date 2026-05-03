@@ -13,6 +13,7 @@ export const SUPPORTED_GAMES = [
   { code: 'cod_mobile', label: 'COD Mobile', emoji: '🪖' },
   { code: 'mobile_legends', label: 'Mobile Legends', emoji: '🛡️' },
   { code: 'fortnite', label: 'Fortnite', emoji: '⛏️' },
+  { code: 'chess', label: 'Chess', emoji: '♟️' },
 ] as const;
 
 export const SERVICE_TYPES = [

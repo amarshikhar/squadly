@@ -34,3 +34,4 @@ coverage/
 
 # Drizzle migrations cache
 drizzle/meta/
+.vercel

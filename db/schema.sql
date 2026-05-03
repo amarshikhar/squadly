@@ -14,7 +14,7 @@ CREATE EXTENSION IF NOT EXISTS "citext";
 -- ============================================================================
 
 CREATE TYPE user_role AS ENUM ('fan', 'creator', 'both');
-CREATE TYPE game_code AS ENUM ('bgmi', 'valorant', 'free_fire', 'dota2', 'cs2', 'cod_mobile', 'fortnite', 'mobile_legends', 'other');
+CREATE TYPE game_code AS ENUM ('bgmi', 'valorant', 'free_fire', 'dota2', 'cs2', 'cod_mobile', 'fortnite', 'mobile_legends', 'chess', 'other');
 CREATE TYPE service_type AS ENUM ('coaching', 'duo', 'rank_push', 'lineup', 'crosshair_fix', 'hype_reel', 'custom');
 CREATE TYPE service_status AS ENUM ('draft', 'live', 'paused', 'archived');
 CREATE TYPE request_status AS ENUM ('pending', 'accepted', 'in_progress', 'completed', 'cancelled', 'disputed');

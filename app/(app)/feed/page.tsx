@@ -27,7 +27,9 @@ export default async function FeedPage() {
       .where(and(eq(lobbyPasses.status, 'open'), gt(lobbyPasses.endsAt, new Date())))
       .orderBy(desc(lobbyPasses.createdAt))
       .limit(8),
-    listServices({ limit: 6 }),
+    // "Fresh" = created in the last 14 days, sorted newest first.
+    // Falls back to plain recent ordering on the listing if fewer than 6 match.
+    listServices({ limit: 6, sort: 'recent', since: new Date(Date.now() - 14 * 24 * 60 * 60 * 1000) }),
   ]);
 
   // Top current bid per pass (best-effort; one query per pass)
@@ -129,6 +131,7 @@ export default async function FeedPage() {
           <section className="mt-16">
             <h2 className="mb-4 font-display text-2xl text-text-0">
               <span className="text-neon-amber">●</span> Fresh services
+              <span className="ml-3 align-middle font-mono text-[11px] text-text-3">listed in the last 14 days</span>
             </h2>
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
               {freshServices.slice(0, 6).map(({ service, creator }) => (

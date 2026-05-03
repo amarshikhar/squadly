@@ -25,7 +25,7 @@ import { sql } from 'drizzle-orm';
 
 export const userRole = pgEnum('user_role', ['fan', 'creator', 'both']);
 export const gameCode = pgEnum('game_code', [
-  'bgmi', 'valorant', 'free_fire', 'dota2', 'cs2', 'cod_mobile', 'fortnite', 'mobile_legends', 'other',
+  'bgmi', 'valorant', 'free_fire', 'dota2', 'cs2', 'cod_mobile', 'fortnite', 'mobile_legends', 'chess', 'other',
 ]);
 export const serviceType = pgEnum('service_type', [
   'coaching', 'duo', 'rank_push', 'lineup', 'crosshair_fix', 'hype_reel', 'custom',

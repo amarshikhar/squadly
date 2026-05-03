@@ -9,8 +9,11 @@ import {
   getVaultBalance,
   listActiveGoals,
   listRequestsForCreator,
+  listRequestsForBuyer,
   listCreatorServices,
+  listMyGoalContributions,
 } from '@/lib/db/queries';
+import { GoalBar } from '@/components/squadly/goal-bar';
 import { formatInr, formatCoins } from '@/lib/utils';
 import { touch, getStreak } from '@/lib/streaks';
 import { db, badgeAwards } from '@/lib/db';
@@ -27,11 +30,13 @@ export default async function HomePage() {
   // Touch streak — tracks daily engagement
   await touch(userId).catch(() => null);
 
-  const [vault, myGoals, myRequests, myServices, streak, badges] = await Promise.all([
+  const [vault, myGoals, myRequests, myServices, myPurchases, myContributions, streak, badges] = await Promise.all([
     getVaultBalance(userId),
     listActiveGoals(userId),
     listRequestsForCreator(userId),
     listCreatorServices(userId),
+    listRequestsForBuyer(userId),
+    listMyGoalContributions(userId, 6),
     getStreak(userId),
     db.query.badgeAwards.findMany({ where: eq(badgeAwards.userId, userId), orderBy: [desc(badgeAwards.awardedAt)], limit: 6 }),
   ]);
@@ -70,32 +75,32 @@ export default async function HomePage() {
 
         {/* KPI row */}
         <div className="mt-10 grid gap-6 md:grid-cols-3">
-          <Card className="p-6">
-            <div className="font-mono text-xs uppercase tracking-widest text-text-2">Vault — INR</div>
-            <div className="mt-2 font-display text-3xl text-neon-cyan glow-cyan-text">
-              {formatInr(vault.inrBalance)}
-            </div>
-            <div className="mt-2 font-mono text-xs text-text-3">{formatCoins(vault.coinBalance)} coins</div>
-            <Button asChild size="sm" variant="outline" className="mt-4">
-              <Link href="/vault">Open Vault →</Link>
-            </Button>
-          </Card>
+          <Link href="/vault" className="block group">
+            <Card className="p-6 transition-all group-hover:border-border-bright group-hover:-translate-y-0.5 cursor-pointer">
+              <div className="font-mono text-xs uppercase tracking-widest text-text-2">Vault — INR</div>
+              <div className="mt-2 font-display text-3xl text-neon-cyan glow-cyan-text">
+                {formatInr(vault.inrBalance)}
+              </div>
+              <div className="mt-2 font-mono text-xs text-text-3">{formatCoins(vault.coinBalance)} coins</div>
+              <div className="mt-4 font-mono text-xs text-text-2 group-hover:text-neon-cyan">Open Vault →</div>
+            </Card>
+          </Link>
 
-          <Card className="p-6">
-            <div className="font-mono text-xs uppercase tracking-widest text-text-2">Active Squad Goals</div>
-            <div className="mt-2 font-display text-3xl text-text-0">{myGoals.length}</div>
-            <Button asChild size="sm" variant="outline" className="mt-4">
-              <Link href="/goals">Manage goals →</Link>
-            </Button>
-          </Card>
+          <Link href="/goals" className="block group">
+            <Card className="p-6 transition-all group-hover:border-border-bright group-hover:-translate-y-0.5 cursor-pointer">
+              <div className="font-mono text-xs uppercase tracking-widest text-text-2">Active Squad Goals</div>
+              <div className="mt-2 font-display text-3xl text-text-0">{myGoals.length}</div>
+              <div className="mt-4 font-mono text-xs text-text-2 group-hover:text-neon-cyan">Manage goals →</div>
+            </Card>
+          </Link>
 
-          <Card className="p-6">
-            <div className="font-mono text-xs uppercase tracking-widest text-text-2">Pending Requests</div>
-            <div className="mt-2 font-display text-3xl text-text-0">{pendingCount}</div>
-            <Button asChild size="sm" variant="outline" className="mt-4">
-              <Link href="/requests">Review requests →</Link>
-            </Button>
-          </Card>
+          <Link href="/requests" className="block group">
+            <Card className="p-6 transition-all group-hover:border-border-bright group-hover:-translate-y-0.5 cursor-pointer">
+              <div className="font-mono text-xs uppercase tracking-widest text-text-2">Pending Requests</div>
+              <div className="mt-2 font-display text-3xl text-text-0">{pendingCount}</div>
+              <div className="mt-4 font-mono text-xs text-text-2 group-hover:text-neon-cyan">Review requests →</div>
+            </Card>
+          </Link>
         </div>
 
         {/* Badges */}
@@ -108,6 +113,83 @@ export default async function HomePage() {
                   {b.code.replace(/_/g, ' ')}
                 </Badge>
               ))}
+            </div>
+          </section>
+        )}
+
+        {/* Purchases & Contributions */}
+        {(myPurchases.length > 0 || myContributions.length > 0) && (
+          <section className="mt-16">
+            <h2 className="mb-5 font-display text-2xl text-text-0">Purchases &amp; Contributions</h2>
+            <div className="grid gap-6 md:grid-cols-2">
+              {/* Services purchased */}
+              <Card className="p-5">
+                <div className="mb-3 flex items-center justify-between">
+                  <div className="font-mono text-xs uppercase tracking-widest text-text-2">Services purchased</div>
+                  <Badge variant="muted">{myPurchases.length}</Badge>
+                </div>
+                {myPurchases.length === 0 ? (
+                  <p className="font-mono text-xs text-text-3">No purchases yet.</p>
+                ) : (
+                  <ul className="divide-y divide-border">
+                    {myPurchases.slice(0, 5).map((p) => (
+                      <li key={p.request.id} className="py-3">
+                        <Link href={`/requests/${p.request.id}`} className="block hover:text-neon-cyan">
+                          <div className="flex items-center justify-between gap-3">
+                            <div className="min-w-0">
+                              <div className="truncate font-mono text-sm text-text-0">{p.service.title}</div>
+                              <div className="truncate font-mono text-[11px] text-text-3">
+                                @{p.creator.handle} · {formatInr(p.request.priceInrPaid)}
+                              </div>
+                            </div>
+                            <Badge variant={p.request.status === 'completed' ? 'green' : 'muted'}>
+                              {p.request.status}
+                            </Badge>
+                          </div>
+                        </Link>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+                {myPurchases.length > 5 && (
+                  <Link href="/requests?role=buyer" className="mt-3 inline-block font-mono text-xs text-text-2 hover:text-neon-cyan">
+                    See all {myPurchases.length} purchases →
+                  </Link>
+                )}
+              </Card>
+
+              {/* Goal contributions */}
+              <Card className="p-5">
+                <div className="mb-3 flex items-center justify-between">
+                  <div className="font-mono text-xs uppercase tracking-widest text-text-2">Goal contributions</div>
+                  <Badge variant="muted">{myContributions.length}</Badge>
+                </div>
+                {myContributions.length === 0 ? (
+                  <p className="font-mono text-xs text-text-3">You haven&apos;t backed any goals yet.</p>
+                ) : (
+                  <ul className="divide-y divide-border">
+                    {myContributions.map((c) => (
+                      <li key={c.goalId} className="py-3">
+                        <Link href={`/goals/${c.goalId}`} className="block hover:text-neon-cyan">
+                          <div className="flex items-center justify-between gap-3">
+                            <div className="min-w-0 flex-1">
+                              <div className="truncate font-mono text-sm text-text-0">{c.goalTitle}</div>
+                              <div className="truncate font-mono text-[11px] text-text-3">@{c.creator.handle}</div>
+                            </div>
+                            <div className="flex-shrink-0 text-right">
+                              <div className="font-mono text-sm text-neon-cyan">{formatCoins(Number(c.myCoins))}</div>
+                              <div className="font-mono text-[10px] text-text-3">contributed</div>
+                            </div>
+                          </div>
+                          <div className="mt-2">
+                            <GoalBar current={c.goalCurrentCoins} target={c.goalTargetCoins} />
+                          </div>
+                        </Link>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </Card>
             </div>
           </section>
         )}

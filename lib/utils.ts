@@ -64,5 +64,6 @@ export const GAME_LABELS: Record<string, string> = {
   cod_mobile: 'COD Mobile',
   fortnite: 'Fortnite',
   mobile_legends: 'Mobile Legends',
+  chess: 'Chess',
   other: 'Other',
 };

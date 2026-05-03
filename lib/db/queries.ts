@@ -61,6 +61,7 @@ export interface ServiceFilters {
   verifiedOnly?: boolean;
   limit?: number;
   sort?: 'recent' | 'price_asc' | 'price_desc' | 'rating';
+  since?: Date;                  // only services created after this timestamp
 }
 
 export async function listServices(filters: ServiceFilters = {}) {
@@ -76,6 +77,7 @@ export async function listServices(filters: ServiceFilters = {}) {
   if (filters.minPriceInr !== undefined) conditions.push(sql`${services.priceInr} >= ${filters.minPriceInr}`);
   if (filters.maxPriceInr !== undefined) conditions.push(sql`${services.priceInr} <= ${filters.maxPriceInr}`);
   if (filters.verifiedOnly) conditions.push(eq(users.isVerified, true));
+  if (filters.since) conditions.push(sql`${services.createdAt} >= ${filters.since}`);
 
   let q = db
     .select({
@@ -103,6 +105,10 @@ export async function listServices(filters: ServiceFilters = {}) {
     case 'rating':
       // Featured first, then recent — true rating sort needs join to provider_profiles
       q = q.orderBy(desc(services.isFeatured), desc(services.createdAt)) as any;
+      break;
+    case 'recent':
+      // Pure freshness — ignore featured boost
+      q = q.orderBy(desc(services.createdAt)) as any;
       break;
     default:
       q = q.orderBy(desc(services.isFeatured), desc(services.createdAt)) as any;
@@ -233,6 +239,34 @@ export async function getGoalById(id: string) {
     .where(eq(squadGoals.id, id))
     .limit(1);
   return rows[0] ?? null;
+}
+
+/** Goals the user has contributed coins to, with aggregated total per goal. */
+export async function listMyGoalContributions(fanId: string, limit = 20) {
+  return db
+    .select({
+      goalId: squadGoals.id,
+      goalTitle: squadGoals.title,
+      goalStatus: squadGoals.status,
+      goalDeadline: squadGoals.deadline,
+      goalTargetCoins: squadGoals.targetCoins,
+      goalCurrentCoins: squadGoals.currentCoins,
+      myCoins: sql<number>`SUM(${squadGoalContributions.coins})`.as('my_coins'),
+      lastContributedAt: sql<Date>`MAX(${squadGoalContributions.contributedAt})`.as('last_contributed_at'),
+      creator: {
+        id: users.id,
+        handle: users.handle,
+        displayName: users.displayName,
+        avatarUrl: users.avatarUrl,
+      },
+    })
+    .from(squadGoalContributions)
+    .innerJoin(squadGoals, eq(squadGoals.id, squadGoalContributions.goalId))
+    .innerJoin(users, eq(users.id, squadGoals.creatorId))
+    .where(eq(squadGoalContributions.fanId, fanId))
+    .groupBy(squadGoals.id, users.id)
+    .orderBy(desc(sql`MAX(${squadGoalContributions.contributedAt})`))
+    .limit(limit);
 }
 
 // ============================================================================
