@@ -319,3 +319,82 @@ export async function listReviewsForCreator(creatorId: string, limit = 20) {
     .orderBy(desc(reviews.createdAt))
     .limit(limit);
 }
+
+// ============================================================================
+// LOBBY PASSES (open / by creator)
+// ============================================================================
+
+export async function listOpenPasses(opts: { creatorId?: string; limit?: number; game?: string } = {}) {
+  const conds = [eq(lobbyPasses.status, 'open'), gt(lobbyPasses.endsAt, new Date())];
+  if (opts.creatorId) conds.push(eq(lobbyPasses.creatorId, opts.creatorId));
+  if (opts.game) conds.push(eq(lobbyPasses.game, opts.game as any));
+
+  return db
+    .select({
+      pass: lobbyPasses,
+      creator: { id: users.id, handle: users.handle, displayName: users.displayName, avatarUrl: users.avatarUrl },
+    })
+    .from(lobbyPasses)
+    .innerJoin(users, eq(users.id, lobbyPasses.creatorId))
+    .where(and(...conds))
+    .orderBy(desc(lobbyPasses.createdAt))
+    .limit(opts.limit ?? 50);
+}
+
+// ============================================================================
+// GLOBAL SEARCH — users + services + goals + passes
+// ============================================================================
+
+export async function searchAll(query: string, limit = 8) {
+  if (!query || query.trim().length < 2) {
+    return { users: [], services: [], goals: [], passes: [] };
+  }
+  const q = `%${query.trim()}%`;
+
+  const [matchUsers, matchServices, matchGoals, matchPasses] = await Promise.all([
+    // Users — by handle or display name
+    db.query.users.findMany({
+      where: and(
+        eq(users.isBanned, false),
+        or(ilike(users.handle, q), ilike(users.displayName, q)),
+      ),
+      columns: { id: true, handle: true, displayName: true, avatarUrl: true, isVerified: true, isProvider: true },
+      limit,
+    }),
+    // Services — by title or description
+    db
+      .select({
+        service: services,
+        creator: { id: users.id, handle: users.handle, displayName: users.displayName },
+      })
+      .from(services)
+      .innerJoin(users, eq(users.id, services.creatorId))
+      .where(and(
+        eq(services.status, 'live'),
+        or(ilike(services.title, q), ilike(services.description, q)),
+      ))
+      .limit(limit),
+    // Goals — by title
+    db
+      .select({
+        goal: squadGoals,
+        creator: { id: users.id, handle: users.handle, displayName: users.displayName },
+      })
+      .from(squadGoals)
+      .innerJoin(users, eq(users.id, squadGoals.creatorId))
+      .where(and(eq(squadGoals.status, 'active'), ilike(squadGoals.title, q)))
+      .limit(limit),
+    // Passes — by title
+    db
+      .select({
+        pass: lobbyPasses,
+        creator: { id: users.id, handle: users.handle, displayName: users.displayName },
+      })
+      .from(lobbyPasses)
+      .innerJoin(users, eq(users.id, lobbyPasses.creatorId))
+      .where(and(eq(lobbyPasses.status, 'open'), ilike(lobbyPasses.title, q)))
+      .limit(limit),
+  ]);
+
+  return { users: matchUsers, services: matchServices, goals: matchGoals, passes: matchPasses };
+}

@@ -4,6 +4,7 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { signOutAction } from '@/app/actions/auth';
+import { SearchBar } from './search-bar';
 
 interface MobileMenuProps {
   isAuthed: boolean;
@@ -61,6 +62,10 @@ export function MobileMenu({ isAuthed, userName, coinBalance }: MobileMenuProps)
               </button>
             </div>
 
+            <div className="mb-3" onClick={() => setOpen(false)}>
+              <SearchBar />
+            </div>
+
             {isAuthed && coinBalance !== undefined && (
               <Link
                 href="/vault"
@@ -72,11 +77,14 @@ export function MobileMenu({ isAuthed, userName, coinBalance }: MobileMenuProps)
               </Link>
             )}
 
+            {isAuthed && (
+              <NavLink href="/feed" onClick={() => setOpen(false)}>Feed</NavLink>
+            )}
             <NavLink href="/services" onClick={() => setOpen(false)}>Browse</NavLink>
             <NavLink href="/goals" onClick={() => setOpen(false)}>Squad Goals</NavLink>
+            <NavLink href="/passes" onClick={() => setOpen(false)}>Lobby Passes</NavLink>
             {isAuthed ? (
               <>
-                <NavLink href="/feed" onClick={() => setOpen(false)}>Feed</NavLink>
                 <NavLink href="/requests" onClick={() => setOpen(false)}>Requests</NavLink>
                 <NavLink href="/messages" onClick={() => setOpen(false)}>DMs</NavLink>
                 <NavLink href="/notifications" onClick={() => setOpen(false)}>Notifications</NavLink>

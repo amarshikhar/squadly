@@ -75,7 +75,7 @@ export default async function ServicesPage({ searchParams }: { searchParams: Sea
             <Link href={'/services' + buildQueryString(searchParams, { game: undefined })}>
               <Badge variant={!searchParams.game ? 'default' : 'muted'} className="cursor-pointer">All</Badge>
             </Link>
-            {SUPPORTED_GAMES.slice(0, 6).map((g) => (
+            {SUPPORTED_GAMES.map((g) => (
               <Link key={g.code} href={'/services' + buildQueryString(searchParams, { game: g.code })}>
                 <Badge variant={searchParams.game === g.code ? 'default' : 'muted'} className="cursor-pointer">
                   {g.emoji} {g.label}

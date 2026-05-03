@@ -74,31 +74,31 @@ export default async function HomePage() {
         </div>
 
         {/* KPI row */}
-        <div className="mt-10 grid gap-6 md:grid-cols-3">
-          <Link href="/vault" className="block group">
-            <Card className="p-6 transition-all group-hover:border-border-bright group-hover:-translate-y-0.5 cursor-pointer">
+        <div className="mt-10 grid gap-6 md:grid-cols-3 md:auto-rows-fr">
+          <Link href="/vault" className="block group h-full">
+            <Card className="flex h-full flex-col p-6 transition-all group-hover:border-border-bright group-hover:-translate-y-0.5 cursor-pointer">
               <div className="font-mono text-xs uppercase tracking-widest text-text-2">Vault — INR</div>
               <div className="mt-2 font-display text-3xl text-neon-cyan glow-cyan-text">
                 {formatInr(vault.inrBalance)}
               </div>
               <div className="mt-2 font-mono text-xs text-text-3">{formatCoins(vault.coinBalance)} coins</div>
-              <div className="mt-4 font-mono text-xs text-text-2 group-hover:text-neon-cyan">Open Vault →</div>
+              <div className="mt-auto pt-4 font-mono text-xs text-text-2 group-hover:text-neon-cyan">Open Vault →</div>
             </Card>
           </Link>
 
-          <Link href="/goals" className="block group">
-            <Card className="p-6 transition-all group-hover:border-border-bright group-hover:-translate-y-0.5 cursor-pointer">
+          <Link href="/goals" className="block group h-full">
+            <Card className="flex h-full flex-col p-6 transition-all group-hover:border-border-bright group-hover:-translate-y-0.5 cursor-pointer">
               <div className="font-mono text-xs uppercase tracking-widest text-text-2">Active Squad Goals</div>
               <div className="mt-2 font-display text-3xl text-text-0">{myGoals.length}</div>
-              <div className="mt-4 font-mono text-xs text-text-2 group-hover:text-neon-cyan">Manage goals →</div>
+              <div className="mt-auto pt-4 font-mono text-xs text-text-2 group-hover:text-neon-cyan">Manage goals →</div>
             </Card>
           </Link>
 
-          <Link href="/requests" className="block group">
-            <Card className="p-6 transition-all group-hover:border-border-bright group-hover:-translate-y-0.5 cursor-pointer">
+          <Link href="/requests" className="block group h-full">
+            <Card className="flex h-full flex-col p-6 transition-all group-hover:border-border-bright group-hover:-translate-y-0.5 cursor-pointer">
               <div className="font-mono text-xs uppercase tracking-widest text-text-2">Pending Requests</div>
               <div className="mt-2 font-display text-3xl text-text-0">{pendingCount}</div>
-              <div className="mt-4 font-mono text-xs text-text-2 group-hover:text-neon-cyan">Review requests →</div>
+              <div className="mt-auto pt-4 font-mono text-xs text-text-2 group-hover:text-neon-cyan">Review requests →</div>
             </Card>
           </Link>
         </div>

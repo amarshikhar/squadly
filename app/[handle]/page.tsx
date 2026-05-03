@@ -14,7 +14,12 @@ import {
   listActiveGoals,
   getTopFansForCreator,
   listReviewsForCreator,
+  listOpenPasses,
 } from '@/lib/db/queries';
+import { db, lobbyPassBids } from '@/lib/db';
+import { eq, desc, and, sql } from 'drizzle-orm';
+import { formatCoins } from '@/lib/utils';
+import { formatDistanceToNow } from 'date-fns';
 import type { RankTier } from '@/lib/utils';
 import type { Metadata } from 'next';
 
@@ -44,12 +49,31 @@ export default async function StreamerHub({ params }: { params: { handle: string
 
   const { user, profile: provider, ranks } = profile;
 
-  const [services, goals, topFans, reviews] = await Promise.all([
+  const [services, goals, topFans, reviews, openPasses] = await Promise.all([
     listCreatorServices(user.id),
     listActiveGoals(user.id),
     getTopFansForCreator(user.id, 5),
     listReviewsForCreator(user.id, 6),
+    listOpenPasses({ creatorId: user.id, limit: 6 }),
   ]);
+
+  // Hydrate top bid per pass (single GROUP BY query)
+  const passIds = openPasses.map((p) => p.pass.id);
+  const topBidByPass: Record<string, number> = {};
+  if (passIds.length > 0) {
+    const tops = await db
+      .select({
+        passId: lobbyPassBids.passId,
+        topAmount: sql<number>`MAX(${lobbyPassBids.coinAmount})`,
+      })
+      .from(lobbyPassBids)
+      .where(and(
+        sql`${lobbyPassBids.passId} = ANY(${passIds})`,
+        sql`${lobbyPassBids.status} IN ('winning','active')`,
+      ))
+      .groupBy(lobbyPassBids.passId);
+    tops.forEach((t) => (topBidByPass[t.passId] = Number(t.topAmount)));
+  }
 
   const primaryRank = ranks.find((r) => r.game === provider?.primaryGame);
 
@@ -121,6 +145,39 @@ export default async function StreamerHub({ params }: { params: { handle: string
                 </div>
               )}
             </section>
+
+            {/* Live Lobby Passes */}
+            {openPasses.length > 0 && (
+              <section>
+                <h2 className="mb-6 font-display text-2xl text-text-0">
+                  <span className="text-neon-magenta">●</span> Live auctions
+                </h2>
+                <div className="grid gap-4 sm:grid-cols-2">
+                  {openPasses.map(({ pass }) => (
+                    <Card key={pass.id} className="p-5 transition-colors hover:border-border-magenta">
+                      <div className="flex items-center justify-between">
+                        <Badge variant="magenta">{pass.slotCount} slot{pass.slotCount > 1 ? 's' : ''}</Badge>
+                        <span className="font-mono text-xs text-text-3">
+                          ends {formatDistanceToNow(new Date(pass.endsAt), { addSuffix: true })}
+                        </span>
+                      </div>
+                      <h3 className="mt-3 line-clamp-2 font-display text-base leading-tight text-text-0">{pass.title}</h3>
+                      <div className="mt-4 flex items-end justify-between">
+                        <div>
+                          <div className="font-mono text-[10px] uppercase tracking-widest text-text-3">Top bid</div>
+                          <div className="font-display text-xl text-neon-magenta">
+                            {formatCoins(topBidByPass[pass.id] ?? pass.minBidCoins)}
+                          </div>
+                        </div>
+                        <Button asChild size="sm" variant="magenta">
+                          <Link href={`/passes/${pass.id}`}>Bid →</Link>
+                        </Button>
+                      </div>
+                    </Card>
+                  ))}
+                </div>
+              </section>
+            )}
 
             {/* Active goals */}
             {goals.length > 0 && (
