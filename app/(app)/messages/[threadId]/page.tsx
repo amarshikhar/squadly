@@ -43,19 +43,32 @@ export default async function ThreadPage({ params }: { params: { threadId: strin
         </Link>
 
         <div className="mt-4 flex flex-shrink-0 items-center gap-4 border-b border-border pb-4">
-          <div className="h-12 w-12 overflow-hidden rounded-full border border-border-bright">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src={counterpart?.avatarUrl ?? `https://i.pravatar.cc/100?u=${counterpartId}`}
-              alt=""
-              className="h-full w-full object-cover"
-            />
-          </div>
-          <div className="min-w-0">
-            <h1 className="truncate font-display text-xl text-text-0">@{counterpart?.handle}</h1>
-            <div className="font-mono text-[11px] uppercase tracking-widest text-text-3">
-              Unlocked via {thread.unlockSource.replace(/_/g, ' ')}
+          {/* Avatar + handle = clickable profile link. Subtle hover affordance
+              so users can tell it's interactive without it screaming. */}
+          <Link
+            href={`/${counterpart?.handle ?? ''}`}
+            className="group flex items-center gap-4 transition-opacity hover:opacity-90"
+            aria-label={`Open @${counterpart?.handle ?? ''}'s profile`}
+          >
+            <div className="h-12 w-12 overflow-hidden rounded-full border border-border-bright">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={counterpart?.avatarUrl ?? `https://i.pravatar.cc/100?u=${counterpartId}`}
+                alt=""
+                className="h-full w-full object-cover"
+              />
             </div>
+            <div className="min-w-0">
+              <h1 className="truncate font-display text-xl text-text-0 transition-colors group-hover:text-neon-cyan">
+                @{counterpart?.handle}
+              </h1>
+              <div className="font-mono text-[10px] uppercase tracking-widest text-text-3">
+                View profile →
+              </div>
+            </div>
+          </Link>
+          <div className="ml-auto font-mono text-[11px] uppercase tracking-widest text-text-3">
+            Unlocked via {thread.unlockSource.replace(/_/g, ' ')}
           </div>
         </div>
 

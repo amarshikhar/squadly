@@ -90,49 +90,74 @@ export default async function MessagesPage() {
               const visibleSvcs = svcs.slice(0, 3);
               const extraCount = svcs.length - visibleSvcs.length;
               return (
-                <Link key={thread.id} href={`/messages/${thread.id}`}>
-                  <Card className="p-4 transition-colors hover:border-border-bright">
-                    <div className="flex items-center gap-4">
+                // Card is no longer a single Link wrapper — we split it into two
+                // hit zones so the avatar/handle goes to the user's profile and
+                // the rest of the card opens the thread. Nested <a>'s aren't
+                // valid HTML, so this restructure is necessary.
+                <Card key={thread.id} className="p-4 transition-colors hover:border-border-bright">
+                  <div className="flex items-center gap-4">
+                    {/* Profile zone — avatar + handle → /[handle] */}
+                    <Link
+                      href={`/${cp?.handle ?? ''}`}
+                      className="flex flex-shrink-0 items-center gap-3 transition-opacity hover:opacity-80"
+                      aria-label={`Open @${cp?.handle ?? ''}'s profile`}
+                    >
                       <div className="h-12 w-12 overflow-hidden rounded-full border border-border">
                         {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img src={cp?.avatarUrl ?? `https://i.pravatar.cc/100?u=${cpId}`} alt="" className="h-full w-full object-cover" />
+                        <img
+                          src={cp?.avatarUrl ?? `https://i.pravatar.cc/100?u=${cpId}`}
+                          alt=""
+                          className="h-full w-full object-cover"
+                        />
                       </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="font-mono text-sm text-text-0">@{cp?.handle ?? '?'}</div>
-                        <div className="font-mono text-[11px] uppercase tracking-widest text-text-3">
-                          Unlocked via {thread.unlockSource.replace(/_/g, ' ')}
-                        </div>
+                      <div className="font-mono text-sm text-text-0 hover:text-neon-cyan">
+                        @{cp?.handle ?? '?'}
                       </div>
-                      <div className="font-mono text-xs text-text-3 flex-shrink-0">
+                    </Link>
+
+                    {/* Thread zone — fills remaining space, opens the chat */}
+                    <Link
+                      href={`/messages/${thread.id}`}
+                      className="flex flex-1 items-center justify-end gap-3 self-stretch text-text-2 transition-colors hover:text-neon-cyan"
+                      aria-label="Open conversation"
+                    >
+                      <span className="hidden font-mono text-[11px] uppercase tracking-widest text-text-3 sm:inline">
+                        Unlocked via {thread.unlockSource.replace(/_/g, ' ')}
+                      </span>
+                      <span className="font-mono text-xs text-text-3">
                         {thread.lastMessageAt
                           ? formatDistanceToNow(new Date(thread.lastMessageAt), { addSuffix: true })
                           : 'no messages'}
-                      </div>
-                    </div>
-                    {svcs.length > 0 && (
-                      <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-border pt-3">
-                        <span className="font-mono text-[10px] uppercase tracking-widest text-text-3">
-                          Services
+                      </span>
+                      <span className="font-mono text-xs">Open →</span>
+                    </Link>
+                  </div>
+                  {svcs.length > 0 && (
+                    <Link
+                      href={`/messages/${thread.id}`}
+                      className="mt-3 flex flex-wrap items-center gap-2 border-t border-border pt-3 transition-colors hover:text-neon-cyan"
+                    >
+                      <span className="font-mono text-[10px] uppercase tracking-widest text-text-3">
+                        Services
+                      </span>
+                      {visibleSvcs.map((s, i) => (
+                        <span
+                          key={`${s.id}-${i}`}
+                          className="rounded-full border border-border bg-bg-2 px-2.5 py-0.5 font-mono text-[11px] text-text-2"
+                          title={`${s.role === 'buyer' ? 'Bought' : 'Sold'} · ${s.status}`}
+                        >
+                          <span className={s.role === 'buyer' ? 'text-neon-cyan' : 'text-neon-magenta'}>
+                            {s.role === 'buyer' ? '↓' : '↑'}
+                          </span>{' '}
+                          {s.title}
                         </span>
-                        {visibleSvcs.map((s, i) => (
-                          <span
-                            key={`${s.id}-${i}`}
-                            className="rounded-full border border-border bg-bg-2 px-2.5 py-0.5 font-mono text-[11px] text-text-2"
-                            title={`${s.role === 'buyer' ? 'Bought' : 'Sold'} · ${s.status}`}
-                          >
-                            <span className={s.role === 'buyer' ? 'text-neon-cyan' : 'text-neon-magenta'}>
-                              {s.role === 'buyer' ? '↓' : '↑'}
-                            </span>{' '}
-                            {s.title}
-                          </span>
-                        ))}
-                        {extraCount > 0 && (
-                          <span className="font-mono text-[11px] text-text-3">+{extraCount} more</span>
-                        )}
-                      </div>
-                    )}
-                  </Card>
-                </Link>
+                      ))}
+                      {extraCount > 0 && (
+                        <span className="font-mono text-[11px] text-text-3">+{extraCount} more</span>
+                      )}
+                    </Link>
+                  )}
+                </Card>
               );
             })}
           </div>
