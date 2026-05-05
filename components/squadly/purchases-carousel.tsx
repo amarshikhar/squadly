@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 
 export interface CarouselSlide {
@@ -15,6 +16,8 @@ export interface CarouselSlide {
 interface PurchasesCarouselProps {
   /** Section heading shown above the carousel */
   heading: string;
+  /** If provided, the heading becomes a link to this URL (with hover state) */
+  headingHref?: string;
   /** Three slides — fewer/more is fine, the carousel adapts */
   slides: CarouselSlide[];
 }
@@ -27,7 +30,7 @@ interface PurchasesCarouselProps {
  * Built with simple state + transform; no third-party dependency. Uses native
  * focus management and ARIA roles so screen readers announce slide changes.
  */
-export function PurchasesCarousel({ heading, slides }: PurchasesCarouselProps) {
+export function PurchasesCarousel({ heading, headingHref, slides }: PurchasesCarouselProps) {
   const [index, setIndex] = useState(0);
   const wrapperRef = useRef<HTMLDivElement>(null);
   const total = slides.length;
@@ -76,9 +79,22 @@ export function PurchasesCarousel({ heading, slides }: PurchasesCarouselProps) {
       aria-label={heading}
       className="select-none"
     >
-      {/* Header row — title + arrow controls */}
+      {/* Header row — title + arrow controls. Title becomes a Link when
+          headingHref is set, with a subtle hover affordance + chevron. */}
       <div className="mb-5 flex items-center justify-between gap-3">
-        <h2 className="font-display text-2xl text-text-0">{heading}</h2>
+        {headingHref ? (
+          <Link
+            href={headingHref}
+            className="group inline-flex items-center gap-2 font-display text-2xl text-text-0 transition-colors hover:text-neon-cyan"
+          >
+            {heading}
+            <span className="translate-x-0 font-mono text-base text-text-3 transition-all group-hover:translate-x-0.5 group-hover:text-neon-cyan">
+              →
+            </span>
+          </Link>
+        ) : (
+          <h2 className="font-display text-2xl text-text-0">{heading}</h2>
+        )}
         <div className="flex items-center gap-2">
           <ArrowButton direction="left" onClick={goPrev} ariaLabel="Previous slide" />
           <span className="font-mono text-xs tabular-nums text-text-3" aria-live="polite">

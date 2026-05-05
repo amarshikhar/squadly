@@ -323,16 +323,53 @@ export default async function HomePage() {
           </section>
         )}
 
-        {/* Purchases & Contributions — looping carousel with 3 slides */}
+        {/* Purchases & Contributions — looping carousel with 3 slides.
+            Heading is a clickable link to the dedicated /me/purchases view. */}
         <div className="mt-16">
-          <PurchasesCarousel heading="Purchases & Contributions" slides={purchaseSlides} />
+          <PurchasesCarousel
+            heading="Purchases & Contributions"
+            headingHref="/me/purchases"
+            slides={purchaseSlides}
+          />
         </div>
 
-        {/* Your Squad Goals — only show when user has any */}
+        {/* Quick create row — moved up here so it sits above ALL the
+            "Your X" sections. All three buttons share one outline style so
+            no single one stands out as the bright/primary CTA. */}
+        <section className="mt-16">
+          <div className="mb-5 flex items-center justify-between">
+            <h2 className="font-display text-2xl text-text-0">Open something new</h2>
+            <Link href="/me/listings" className="font-mono text-xs text-text-2 hover:text-neon-cyan">
+              View all your listings →
+            </Link>
+          </div>
+          <div className="flex flex-wrap gap-3">
+            <Button asChild size="lg" variant="outline">
+              <Link href="/goals/create">+ Goal</Link>
+            </Button>
+            <Button asChild size="lg" variant="outline">
+              <Link href="/passes/create">+ Lobby Pass</Link>
+            </Button>
+            <Button asChild size="lg" variant="outline">
+              <Link href="/services/create">+ New service</Link>
+            </Button>
+          </div>
+        </section>
+
+        {/* Your Squad Goals — only show when user has any. Title is clickable,
+            cards too. */}
         {myGoals.length > 0 && (
           <section className="mt-16">
             <div className="mb-5 flex items-center justify-between">
-              <h2 className="font-display text-2xl text-text-0">Your Squad Goals</h2>
+              <Link
+                href="/me/listings"
+                className="group inline-flex items-center gap-2 font-display text-2xl text-text-0 transition-colors hover:text-neon-cyan"
+              >
+                Your Squad Goals
+                <span className="font-mono text-base text-text-3 transition-all group-hover:translate-x-0.5 group-hover:text-neon-cyan">
+                  →
+                </span>
+              </Link>
               <Link href="/me/listings" className="font-mono text-xs text-text-2 hover:text-neon-cyan">
                 See all →
               </Link>
@@ -360,11 +397,19 @@ export default async function HomePage() {
           </section>
         )}
 
-        {/* Your Lobby Passes — only show when user has any open */}
+        {/* Your Lobby Passes — title clickable */}
         {myPasses.length > 0 && (
           <section className="mt-16">
             <div className="mb-5 flex items-center justify-between">
-              <h2 className="font-display text-2xl text-text-0">Your Lobby Passes</h2>
+              <Link
+                href="/me/listings"
+                className="group inline-flex items-center gap-2 font-display text-2xl text-text-0 transition-colors hover:text-neon-cyan"
+              >
+                Your Lobby Passes
+                <span className="font-mono text-base text-text-3 transition-all group-hover:translate-x-0.5 group-hover:text-neon-cyan">
+                  →
+                </span>
+              </Link>
               <Link href="/me/listings" className="font-mono text-xs text-text-2 hover:text-neon-cyan">
                 See all →
               </Link>
@@ -396,44 +441,48 @@ export default async function HomePage() {
           </section>
         )}
 
-        {/* Services + create buttons (Goal / Pass / Service) */}
+        {/* Your services — title clickable, cards fully clickable. The
+            create buttons now live in the row above so this section is a
+            pure listing view. */}
         <section className="mt-16">
-          <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
-            <h2 className="font-display text-2xl text-text-0">Your services</h2>
-            <div className="flex flex-wrap gap-2">
-              <Button asChild size="sm" variant="outline">
-                <Link href="/goals/create">+ Goal</Link>
-              </Button>
-              <Button asChild size="sm" variant="outline">
-                <Link href="/passes/create">+ Lobby Pass</Link>
-              </Button>
-              <Button asChild size="sm">
-                <Link href="/services/create">+ New service</Link>
-              </Button>
-            </div>
+          <div className="mb-5 flex items-center justify-between">
+            <Link
+              href="/me/listings"
+              className="group inline-flex items-center gap-2 font-display text-2xl text-text-0 transition-colors hover:text-neon-cyan"
+            >
+              Your services
+              <span className="font-mono text-base text-text-3 transition-all group-hover:translate-x-0.5 group-hover:text-neon-cyan">
+                →
+              </span>
+            </Link>
+            <Link href="/me/listings" className="font-mono text-xs text-text-2 hover:text-neon-cyan">
+              See all →
+            </Link>
           </div>
 
           {myServices.length === 0 ? (
             <Card className="p-10 text-center text-text-3">
               <p className="font-mono text-sm">No services yet. List your first to start earning.</p>
-              <Button asChild className="mt-5">
+              <Button asChild className="mt-5" variant="outline">
                 <Link href="/services/create">Create your first service</Link>
               </Button>
             </Card>
           ) : (
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
               {myServices.map((s) => (
-                <Card key={s.id} className="p-5">
-                  <Badge variant={s.status === 'live' ? 'green' : 'muted'}>{s.status}</Badge>
-                  <h3 className="mt-3 font-display text-lg text-text-0">{s.title}</h3>
-                  <div className="mt-1 font-mono text-xs text-text-2">{s.durationMin} min</div>
-                  <div className="mt-3 flex items-center justify-between">
-                    <div className="font-display text-xl text-neon-cyan">{formatInr(s.priceInr)}</div>
-                    <Link href={`/services/${s.id}`} className="font-mono text-xs text-text-2 hover:text-neon-cyan">
-                      View →
-                    </Link>
-                  </div>
-                </Card>
+                <Link key={s.id} href={`/services/${s.id}`} className="block group">
+                  <Card className="h-full p-5 transition-all group-hover:border-border-bright group-hover:-translate-y-0.5">
+                    <Badge variant={s.status === 'live' ? 'green' : 'muted'}>{s.status}</Badge>
+                    <h3 className="mt-3 line-clamp-2 font-display text-lg text-text-0">{s.title}</h3>
+                    <div className="mt-1 font-mono text-xs text-text-2">{s.durationMin} min</div>
+                    <div className="mt-3 flex items-center justify-between border-t border-border pt-3">
+                      <div className="font-display text-xl text-neon-cyan">{formatInr(s.priceInr)}</div>
+                      <span className="font-mono text-xs text-text-2 group-hover:text-neon-cyan">
+                        View →
+                      </span>
+                    </div>
+                  </Card>
+                </Link>
               ))}
             </div>
           )}

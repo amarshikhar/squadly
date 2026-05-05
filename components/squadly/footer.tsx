@@ -74,11 +74,12 @@ export async function Footer() {
           </div>
 
           {/* MIDDLE — three link subgroups laid out horizontally on desktop.
-              Each subgroup keeps its own header + items vertical inside. */}
-          <div className="flex flex-col gap-10 sm:flex-row sm:flex-wrap sm:gap-x-12 sm:gap-y-8">
-            <NavGroup title="Navigate" links={PUBLIC_LINKS} />
-            {isAuthed && <NavGroup title="For you" links={AUTH_LINKS} />}
-            {isAuthed && <NavGroup title="Create" links={CREATE_LINKS} />}
+              "For you" has 11 items so it gets a 2-column grid to keep the
+              footer from growing tall; the other two stay single-column. */}
+          <div className="flex flex-col gap-10 sm:flex-row sm:flex-wrap sm:items-start sm:gap-x-12 sm:gap-y-8">
+            <NavGroup title="Navigate" links={PUBLIC_LINKS} columns={1} />
+            {isAuthed && <NavGroup title="For you" links={AUTH_LINKS} columns={2} />}
+            {isAuthed && <NavGroup title="Create" links={CREATE_LINKS} columns={1} />}
           </div>
 
           {/* RIGHT — Legal flush to the right edge */}
@@ -117,13 +118,23 @@ export async function Footer() {
   );
 }
 
-function NavGroup({ title, links }: { title: string; links: NavLink[] }) {
+function NavGroup({
+  title,
+  links,
+  columns = 1,
+}: {
+  title: string;
+  links: NavLink[];
+  columns?: 1 | 2 | 3;
+}) {
+  const gridCols =
+    columns === 3 ? 'grid-cols-3' : columns === 2 ? 'grid-cols-2' : 'grid-cols-1';
   return (
     <div className="min-w-[7rem]">
       <div className="font-mono text-[10px] uppercase tracking-widest text-text-3">
         {title}
       </div>
-      <div className="mt-3 flex flex-col gap-2">
+      <div className={`mt-3 grid gap-x-6 gap-y-2 ${gridCols}`}>
         {links.map((l) => (
           <Link
             key={l.href}

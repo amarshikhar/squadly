@@ -49,15 +49,16 @@ export default async function MyListingsPage() {
           Everything you&apos;ve put up for fans — services, Squad Goals, and Lobby Passes — in one place.
         </p>
 
-        {/* Quick-create row */}
-        <div className="mt-8 flex flex-wrap gap-2">
+        {/* Quick-create row — all three buttons share one style so no single
+            create action stands out as the bright/primary CTA. */}
+        <div className="mt-8 flex flex-wrap gap-3">
           <Button asChild size="sm" variant="outline">
             <Link href="/goals/create">+ Goal</Link>
           </Button>
           <Button asChild size="sm" variant="outline">
             <Link href="/passes/create">+ Lobby Pass</Link>
           </Button>
-          <Button asChild size="sm">
+          <Button asChild size="sm" variant="outline">
             <Link href="/services/create">+ New service</Link>
           </Button>
         </div>
@@ -78,35 +79,35 @@ export default async function MyListingsPage() {
           </Card>
         </div>
 
-        {/* Section 1 — services */}
+        {/* Section 1 — services. Cards fully clickable, like Goals/Passes. */}
         <section className="mt-16">
           <div className="mb-5 flex items-center justify-between">
             <h2 className="font-display text-2xl text-text-0">Your services</h2>
-            <Button asChild size="sm">
+            <Button asChild size="sm" variant="outline">
               <Link href="/services/create">+ New service</Link>
             </Button>
           </div>
           {myServices.length === 0 ? (
             <Card className="p-10 text-center">
               <p className="font-mono text-sm text-text-3">No services yet. List your first to start earning.</p>
-              <Button asChild className="mt-5">
+              <Button asChild className="mt-5" variant="outline">
                 <Link href="/services/create">Create your first service</Link>
               </Button>
             </Card>
           ) : (
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
               {myServices.map((s) => (
-                <Card key={s.id} className="p-5">
-                  <Badge variant={s.status === 'live' ? 'green' : 'muted'}>{s.status}</Badge>
-                  <h3 className="mt-3 line-clamp-2 font-display text-lg text-text-0">{s.title}</h3>
-                  <div className="mt-1 font-mono text-xs text-text-2">{s.durationMin} min · {s.deliveryWindowHours}h delivery</div>
-                  <div className="mt-4 flex items-center justify-between border-t border-border pt-3">
-                    <div className="font-display text-xl text-neon-cyan">{formatInr(s.priceInr)}</div>
-                    <Link href={`/services/${s.id}`} className="font-mono text-xs text-text-2 hover:text-neon-cyan">
-                      View →
-                    </Link>
-                  </div>
-                </Card>
+                <Link key={s.id} href={`/services/${s.id}`} className="block group">
+                  <Card className="h-full p-5 transition-all group-hover:border-border-bright group-hover:-translate-y-0.5">
+                    <Badge variant={s.status === 'live' ? 'green' : 'muted'}>{s.status}</Badge>
+                    <h3 className="mt-3 line-clamp-2 font-display text-lg text-text-0">{s.title}</h3>
+                    <div className="mt-1 font-mono text-xs text-text-2">{s.durationMin} min · {s.deliveryWindowHours}h delivery</div>
+                    <div className="mt-4 flex items-center justify-between border-t border-border pt-3">
+                      <div className="font-display text-xl text-neon-cyan">{formatInr(s.priceInr)}</div>
+                      <span className="font-mono text-xs text-text-2 group-hover:text-neon-cyan">View →</span>
+                    </div>
+                  </Card>
+                </Link>
               ))}
             </div>
           )}
