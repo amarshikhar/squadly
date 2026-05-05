@@ -107,8 +107,8 @@ export function MobileMenu({ isAuthed, userName, coinBalance }: MobileMenuProps)
                 <NavLink href="/feed" onClick={() => setOpen(false)}>Feed</NavLink>
               )}
               <NavLink href="/services" onClick={() => setOpen(false)}>Browse</NavLink>
-              <NavLink href="/goals" onClick={() => setOpen(false)}>Squad Goals</NavLink>
-              <NavLink href="/passes" onClick={() => setOpen(false)}>Lobby Passes</NavLink>
+              <NavLink href="/goals" onClick={() => setOpen(false)}>Goals</NavLink>
+              <NavLink href="/passes" onClick={() => setOpen(false)}>Passes</NavLink>
               {isAuthed ? (
                 <>
                   <NavLink href="/requests" onClick={() => setOpen(false)}>Requests</NavLink>
@@ -117,7 +117,7 @@ export function MobileMenu({ isAuthed, userName, coinBalance }: MobileMenuProps)
                   <NavLink href="/referrals" onClick={() => setOpen(false)}>Referrals</NavLink>
                   <NavLink href="/payouts" onClick={() => setOpen(false)}>Payouts</NavLink>
                   <NavLink href="/profile" onClick={() => setOpen(false)}>Profile</NavLink>
-                  <NavLink href="/home" onClick={() => setOpen(false)} accent>Streamer Hub</NavLink>
+                  <NavLink href="/home" onClick={() => setOpen(false)} accent>Hub</NavLink>
                   <form action={signOutAction} className="mt-3">
                     <button
                       type="submit"

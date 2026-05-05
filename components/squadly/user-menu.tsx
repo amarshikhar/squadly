@@ -45,7 +45,7 @@ export function UserMenu({ userName }: UserMenuProps) {
             onClick={close}
             className="block px-4 py-2.5 text-sm text-text-1 hover:bg-bg-2 hover:text-neon-cyan"
           >
-            Streamer Hub
+            Hub
           </Link>
           <Link
             href="/profile"

@@ -16,16 +16,17 @@ const PUBLIC_PATHS = [
 ];
 
 // Page routes that require auth (redirect to /signin)
+// Note: /services and /goals are PUBLIC for browsing. /services/create and
+// /passes/create remain auth-gated. /goals/[id] needs auth only to contribute,
+// which is enforced inside the API handler — the detail page itself is public.
 const PROTECTED_PAGE_PATTERNS = [
   /^\/vault/,
   /^\/home/,
-  /^\/goals/,
   /^\/passes\/create/,
   /^\/requests/,
   /^\/payouts/,
   /^\/profile/,
   /^\/services\/create/,
-  /^\/services$/,
   /^\/messages/,
   /^\/notifications/,
   /^\/referrals/,

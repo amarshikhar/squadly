@@ -93,6 +93,27 @@ export function LobbyPassLive(props: Props) {
       return;
     }
     setLoading(true);
+
+    // Optimistic: insert a placeholder bid so the user sees their name + amount
+    // immediately, ahead of the server round-trip / Pusher echo.
+    const optimisticId = `tmp-${Date.now()}`;
+    const optimisticBid: BidView = {
+      id: optimisticId,
+      bidderId: 'me',
+      bidderHandle: 'You',
+      coinAmount: bidAmount,
+      status: 'winning',
+      bidAt: new Date().toISOString(),
+    };
+    const previous = bids;
+    setBids((prev) => {
+      // Demote previous top to 'outbid' visually, prepend ours as 'winning'.
+      const demoted = prev.map((b) =>
+        b.status === 'winning' ? { ...b, status: 'outbid' } : b,
+      );
+      return [optimisticBid, ...demoted];
+    });
+
     try {
       const res = await fetch(`/api/passes/${props.passId}/bid`, {
         method: 'POST',
@@ -112,6 +133,8 @@ export function LobbyPassLive(props: Props) {
       }
       router.refresh();
     } catch (e: any) {
+      // Roll back the optimistic insert on failure so the UI reflects the truth.
+      setBids(previous);
       setError(e.message);
     } finally {
       setLoading(false);

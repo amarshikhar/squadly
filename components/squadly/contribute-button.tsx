@@ -44,6 +44,18 @@ export function ContributeButton({ goalId, coinBalance, disabled }: ContributeBu
     }
 
     setLoading(true);
+
+    // Optimistic: tell GoalLiveProgress (sibling client component on the same page)
+    // to bump the bar immediately. We dispatch a window event so we don't have to
+    // restructure the server-component page to share state via props.
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(
+        new CustomEvent(`goal:${goalId}:optimistic-contribution`, {
+          detail: { coins },
+        }),
+      );
+    }
+
     try {
       const res = await fetch(`/api/goals/${goalId}/contribute`, {
         method: 'POST',
@@ -60,6 +72,14 @@ export function ContributeButton({ goalId, coinBalance, disabled }: ContributeBu
       setOpen(false);
       router.refresh();
     } catch (e: any) {
+      // Roll back the optimistic bump on failure.
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(
+          new CustomEvent(`goal:${goalId}:optimistic-contribution`, {
+            detail: { coins: -coins },
+          }),
+        );
+      }
       setError(e.message);
     } finally {
       setLoading(false);
