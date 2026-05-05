@@ -6,49 +6,60 @@ import { auth } from '@/lib/auth';
 interface NavLink {
   href: string;
   label: string;
-  authOnly?: boolean;
 }
 
-const NAV_LINKS: NavLink[] = [
-  // Public — visible to everyone
+// Visible to everyone (signed in or out).
+const PUBLIC_LINKS: NavLink[] = [
   { href: '/services', label: 'Browse' },
   { href: '/goals', label: 'Goals' },
   { href: '/passes', label: 'Passes' },
-  // Auth-only — hidden when signed out
-  { href: '/home', label: 'Hub', authOnly: true },
-  { href: '/feed', label: 'Feed', authOnly: true },
-  { href: '/dms', label: 'DMs', authOnly: true },
-  { href: '/vault', label: 'Vault', authOnly: true },
-  { href: '/requests', label: 'Requests', authOnly: true },
-  { href: '/payouts', label: 'Payouts', authOnly: true },
-  { href: '/referrals', label: 'Referrals', authOnly: true },
-  { href: '/profile', label: 'Profile', authOnly: true },
 ];
 
-const LEGAL_LINKS = [
+// Visible only when signed in.
+const AUTH_LINKS: NavLink[] = [
+  { href: '/home', label: 'Hub' },
+  { href: '/feed', label: 'Feed' },
+  { href: '/notifications', label: 'Notifications' },
+  { href: '/me/purchases', label: 'Purchases' },
+  { href: '/me/listings', label: 'Listings' },
+  { href: '/messages', label: 'DMs' },
+  { href: '/vault', label: 'Vault' },
+  { href: '/requests', label: 'Requests' },
+  { href: '/payouts', label: 'Payouts' },
+  { href: '/referrals', label: 'Referrals' },
+  { href: '/profile', label: 'Profile' },
+];
+
+const CREATE_LINKS: NavLink[] = [
+  { href: '/goals/create', label: '+ Goal' },
+  { href: '/passes/create', label: '+ Lobby Pass' },
+  { href: '/services/create', label: '+ Service' },
+];
+
+const LEGAL_LINKS: NavLink[] = [
   { href: '/terms', label: 'Terms' },
   { href: '/privacy', label: 'Privacy' },
 ];
-
-// 'DMs' is a relabel of /messages — keep the actual route working but show new label.
-const ROUTE_OVERRIDES: Record<string, string> = {
-  '/dms': '/messages',
-};
 
 export async function Footer() {
   const session = await auth();
   const isAuthed = !!session?.user;
   const year = new Date().getFullYear();
 
-  const visibleLinks = NAV_LINKS.filter((l) => !l.authOnly || isAuthed);
-
   return (
     <footer className="mt-24 border-t border-border bg-bg-1">
-      {/* Flush container — matches top-bar padding (px-4 / sm:px-6) instead of container-x */}
+      {/* Flush container — matches top-bar padding (px-4 / sm:px-6) */}
       <div className="px-4 py-12 sm:px-6">
-        <div className="grid gap-10 md:grid-cols-4">
-          <div className="md:col-span-1">
-            <Link href="/" className="inline-flex items-center gap-2" aria-label={`${APP_NAME} home`}>
+        {/* Outer row — Brand left, link groups middle, Legal right.
+            Stacks vertically on mobile, flows horizontally on lg+. */}
+        <div className="flex flex-col gap-10 lg:flex-row lg:items-start lg:justify-between">
+          {/* LEFT — Brand */}
+          <div className="lg:w-48 lg:flex-shrink-0">
+            <Link
+              href="/"
+              className="inline-flex items-center gap-2"
+              aria-label={`${APP_NAME} home`}
+            >
               <Image
                 src="/squadly-logo.png"
                 alt=""
@@ -62,24 +73,20 @@ export async function Footer() {
             </p>
           </div>
 
-          <div className="md:col-span-2">
-            <div className="font-mono text-[10px] uppercase tracking-widest text-text-3">Navigate</div>
-            <div className="mt-3 flex flex-wrap gap-x-5 gap-y-2">
-              {visibleLinks.map((l) => (
-                <Link
-                  key={l.href}
-                  href={ROUTE_OVERRIDES[l.href] ?? l.href}
-                  className="font-mono text-xs text-text-2 hover:text-neon-cyan"
-                >
-                  {l.label}
-                </Link>
-              ))}
-            </div>
+          {/* MIDDLE — three link subgroups laid out horizontally on desktop.
+              Each subgroup keeps its own header + items vertical inside. */}
+          <div className="flex flex-col gap-10 sm:flex-row sm:flex-wrap sm:gap-x-12 sm:gap-y-8">
+            <NavGroup title="Navigate" links={PUBLIC_LINKS} />
+            {isAuthed && <NavGroup title="For you" links={AUTH_LINKS} />}
+            {isAuthed && <NavGroup title="Create" links={CREATE_LINKS} />}
           </div>
 
-          <div>
-            <div className="font-mono text-[10px] uppercase tracking-widest text-text-3">Legal</div>
-            <div className="mt-3 flex flex-col gap-2">
+          {/* RIGHT — Legal flush to the right edge */}
+          <div className="lg:flex-shrink-0 lg:text-right">
+            <div className="font-mono text-[10px] uppercase tracking-widest text-text-3">
+              Legal
+            </div>
+            <div className="mt-3 flex flex-col gap-2 lg:items-end">
               {LEGAL_LINKS.map((l) => (
                 <Link
                   key={l.href}
@@ -107,5 +114,26 @@ export async function Footer() {
         </div>
       </div>
     </footer>
+  );
+}
+
+function NavGroup({ title, links }: { title: string; links: NavLink[] }) {
+  return (
+    <div className="min-w-[7rem]">
+      <div className="font-mono text-[10px] uppercase tracking-widest text-text-3">
+        {title}
+      </div>
+      <div className="mt-3 flex flex-col gap-2">
+        {links.map((l) => (
+          <Link
+            key={l.href}
+            href={l.href}
+            className="font-mono text-xs text-text-2 transition-colors hover:text-neon-cyan"
+          >
+            {l.label}
+          </Link>
+        ))}
+      </div>
+    </div>
   );
 }

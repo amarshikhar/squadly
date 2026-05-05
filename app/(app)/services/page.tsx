@@ -97,8 +97,8 @@ export default async function ServicesPage({ searchParams }: { searchParams: Sea
         <div className="mt-8 flex gap-2 border-b border-border">
           {[
             { code: 'services' as const, label: 'Services' },
-            { code: 'passes' as const, label: 'Lobby Passes' },
             { code: 'goals' as const, label: 'Squad Goals' },
+            { code: 'passes' as const, label: 'Lobby Passes' },
           ].map((t) => {
             const active = kind === t.code;
             // Switching tabs preserves only the universal `game` filter (which doesn't apply to goals);
