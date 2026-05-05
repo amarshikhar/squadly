@@ -7,7 +7,7 @@ import { auth } from '@/lib/auth';
 const CreatePassSchema = z.object({
   title: z.string().min(5).max(140),
   description: z.string().max(2000).optional(),
-  game: z.enum(['bgmi', 'valorant', 'free_fire', 'dota2', 'cs2', 'cod_mobile', 'fortnite', 'mobile_legends', 'other']),
+  game: z.enum(['bgmi', 'valorant', 'free_fire', 'dota2', 'cs2', 'cod_mobile', 'fortnite', 'mobile_legends', 'chess', 'other']),
   slotCount: z.number().int().min(1).max(10),
   minBidCoins: z.number().int().min(1).max(50000),
   bidIncrementCoins: z.number().int().min(1).max(5000),

@@ -32,15 +32,18 @@ export default async function ThreadPage({ params }: { params: { threadId: strin
   });
 
   return (
-    <div className="min-h-screen">
+    // Lock the outer chrome to viewport height so only the chat list inside scrolls.
+    // Nav is sticky h-16, so the chat area is `100dvh - 4rem`.
+    <div className="flex h-[100dvh] flex-col overflow-hidden">
       <Nav />
-      <main className="container-x py-12">
+
+      <main className="flex min-h-0 flex-1 flex-col px-4 pt-4 sm:px-6 sm:pt-6">
         <Link href="/messages" className="font-mono text-sm text-text-2 hover:text-neon-cyan">
           ← All conversations
         </Link>
 
-        <div className="mt-6 flex items-center gap-4">
-          <div className="h-14 w-14 overflow-hidden rounded-full border border-border-bright">
+        <div className="mt-4 flex flex-shrink-0 items-center gap-4 border-b border-border pb-4">
+          <div className="h-12 w-12 overflow-hidden rounded-full border border-border-bright">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src={counterpart?.avatarUrl ?? `https://i.pravatar.cc/100?u=${counterpartId}`}
@@ -48,15 +51,15 @@ export default async function ThreadPage({ params }: { params: { threadId: strin
               className="h-full w-full object-cover"
             />
           </div>
-          <div>
-            <h1 className="font-display text-2xl text-text-0">@{counterpart?.handle}</h1>
-            <div className="font-mono text-xs uppercase tracking-widest text-text-3">
+          <div className="min-w-0">
+            <h1 className="truncate font-display text-xl text-text-0">@{counterpart?.handle}</h1>
+            <div className="font-mono text-[11px] uppercase tracking-widest text-text-3">
               Unlocked via {thread.unlockSource.replace(/_/g, ' ')}
             </div>
           </div>
         </div>
 
-        <div className="mt-8">
+        <div className="flex min-h-0 flex-1 py-4">
           <ChatView
             threadId={thread.id}
             currentUserId={userId}

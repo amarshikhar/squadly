@@ -324,6 +324,35 @@ export async function listReviewsForCreator(creatorId: string, limit = 20) {
 // LOBBY PASSES (open / by creator)
 // ============================================================================
 
+/** Passes the current user has bid on, with their current top bid + the pass's top bid. */
+export async function listMyLobbyBids(bidderId: string, limit = 12) {
+  return db
+    .select({
+      passId: lobbyPasses.id,
+      passTitle: lobbyPasses.title,
+      passGame: lobbyPasses.game,
+      passStatus: lobbyPasses.status,
+      passEndsAt: lobbyPasses.endsAt,
+      passSlotCount: lobbyPasses.slotCount,
+      myTopBid: sql<number>`MAX(${lobbyPassBids.coinAmount})`.as('my_top_bid'),
+      lastBidAt: sql<Date>`MAX(${lobbyPassBids.bidAt})`.as('last_bid_at'),
+      myBidStatus: sql<string>`MAX(${lobbyPassBids.status})`.as('my_bid_status'),
+      creator: {
+        id: users.id,
+        handle: users.handle,
+        displayName: users.displayName,
+        avatarUrl: users.avatarUrl,
+      },
+    })
+    .from(lobbyPassBids)
+    .innerJoin(lobbyPasses, eq(lobbyPasses.id, lobbyPassBids.passId))
+    .innerJoin(users, eq(users.id, lobbyPasses.creatorId))
+    .where(eq(lobbyPassBids.bidderId, bidderId))
+    .groupBy(lobbyPasses.id, users.id)
+    .orderBy(desc(sql`MAX(${lobbyPassBids.bidAt})`))
+    .limit(limit);
+}
+
 export async function listOpenPasses(opts: { creatorId?: string; limit?: number; game?: string } = {}) {
   const conds = [eq(lobbyPasses.status, 'open'), gt(lobbyPasses.endsAt, new Date())];
   if (opts.creatorId) conds.push(eq(lobbyPasses.creatorId, opts.creatorId));

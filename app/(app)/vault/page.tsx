@@ -37,25 +37,19 @@ export default async function VaultPage() {
         <Badge>● The Vault</Badge>
         <h1 className="mt-4 font-display text-display-lg text-text-0">Your Vault</h1>
 
-        {/* Balances */}
-        <div className="mt-10 grid gap-5 md:grid-cols-2">
-          <Card className="p-7">
-            <div className="font-mono text-xs uppercase tracking-widest text-text-2">INR Balance</div>
-            <div className="mt-2 font-display text-4xl text-neon-cyan glow-cyan-text">
-              {formatInr(vault.inrBalance)}
-            </div>
-            {vault.inrPending > 0 && (
-              <div className="mt-2 font-mono text-xs text-text-3">
-                + {formatInr(vault.inrPending)} pending settlement
-              </div>
-            )}
-          </Card>
+        {/* Balance — coins only. INR isn't held in the vault: service payments
+            settle via Stripe directly to the creator's bank, so showing an
+            INR balance here was misleading. Withdrawable INR lives on the
+            Payouts page. */}
+        <div className="mt-10">
           <Card className="p-7">
             <div className="font-mono text-xs uppercase tracking-widest text-text-2">Coins</div>
-            <div className="mt-2 font-display text-4xl text-neon-magenta glow-magenta-text">
+            <div className="mt-2 font-display text-5xl text-neon-magenta glow-magenta-text">
               {formatCoins(vault.coinBalance)}
             </div>
-            <div className="mt-2 font-mono text-xs text-text-3">Spend on Squad Goals · Lobby Pass · Tips</div>
+            <div className="mt-2 font-mono text-xs text-text-3">
+              Spend on Squad Goals · Lobby Pass · Tips
+            </div>
           </Card>
         </div>
 

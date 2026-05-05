@@ -12,12 +12,16 @@ import {
   listRequestsForBuyer,
   listCreatorServices,
   listMyGoalContributions,
+  listMyLobbyBids,
+  listOpenPasses,
 } from '@/lib/db/queries';
 import { GoalBar } from '@/components/squadly/goal-bar';
-import { formatInr, formatCoins } from '@/lib/utils';
+import { formatInr, formatCoins, GAME_LABELS } from '@/lib/utils';
 import { touch, getStreak } from '@/lib/streaks';
 import { db, badgeAwards } from '@/lib/db';
 import { eq, desc } from 'drizzle-orm';
+import { formatDistanceToNow } from 'date-fns';
+import { PurchasesCarousel, type CarouselSlide } from '@/components/squadly/purchases-carousel';
 
 export const dynamic = 'force-dynamic';
 
@@ -30,24 +34,184 @@ export default async function HomePage() {
   // Touch streak — tracks daily engagement
   await touch(userId).catch(() => null);
 
-  const [vault, myGoals, myRequests, myServices, myPurchases, myContributions, streak, badges] = await Promise.all([
+  const [
+    vault,
+    myGoals,
+    incomingRequests,
+    myServices,
+    outgoingRequests,
+    myContributions,
+    myLobbyBids,
+    myPasses,
+    streak,
+    badges,
+  ] = await Promise.all([
     getVaultBalance(userId),
     listActiveGoals(userId),
     listRequestsForCreator(userId),
     listCreatorServices(userId),
     listRequestsForBuyer(userId),
     listMyGoalContributions(userId, 6),
+    listMyLobbyBids(userId, 6),
+    listOpenPasses({ creatorId: userId, limit: 6 }),
     getStreak(userId),
-    db.query.badgeAwards.findMany({ where: eq(badgeAwards.userId, userId), orderBy: [desc(badgeAwards.awardedAt)], limit: 6 }),
+    db.query.badgeAwards.findMany({
+      where: eq(badgeAwards.userId, userId),
+      orderBy: [desc(badgeAwards.awardedAt)],
+      limit: 6,
+    }),
   ]);
 
-  const pendingCount = myRequests.filter((r) => r.request.status === 'pending').length;
+  const pendingIncoming = incomingRequests.filter((r) => r.request.status === 'pending').length;
+  const pendingOutgoing = outgoingRequests.filter((r) => r.request.status === 'pending').length;
+  const pendingCount = pendingIncoming + pendingOutgoing;
+
+  // Build the three carousel slides — Services Purchased, Goal Contributions,
+  // Lobby Pass Bids — only including ones that have data, but keeping all
+  // three slots so the carousel UI stays consistent.
+  const purchaseSlides: CarouselSlide[] = [
+    {
+      id: 'services-purchased',
+      title: 'Services purchased',
+      count: outgoingRequests.length,
+      content: (
+        <Card className="h-full p-6">
+          <div className="mb-4 flex items-center justify-between">
+            <div className="font-mono text-xs uppercase tracking-widest text-text-2">Services purchased</div>
+            <Badge variant="muted">{outgoingRequests.length}</Badge>
+          </div>
+          {outgoingRequests.length === 0 ? (
+            <p className="font-mono text-xs text-text-3">No purchases yet. Browse services to get started.</p>
+          ) : (
+            <ul className="divide-y divide-border">
+              {outgoingRequests.slice(0, 5).map((p) => (
+                <li key={p.request.id} className="py-3">
+                  <Link href={`/requests/${p.request.id}`} className="block hover:text-neon-cyan">
+                    <div className="flex items-center justify-between gap-3">
+                      <div className="min-w-0">
+                        <div className="truncate font-mono text-sm text-text-0">{p.service.title}</div>
+                        <div className="truncate font-mono text-[11px] text-text-3">
+                          @{p.creator.handle} · {formatInr(p.request.priceInrPaid)}
+                        </div>
+                      </div>
+                      <Badge variant={p.request.status === 'completed' ? 'green' : 'muted'}>
+                        {p.request.status}
+                      </Badge>
+                    </div>
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          )}
+          <div className="mt-4 flex justify-end border-t border-border pt-3">
+            <Link href="/me/purchases" className="font-mono text-xs text-text-2 hover:text-neon-cyan">
+              See all →
+            </Link>
+          </div>
+        </Card>
+      ),
+    },
+    {
+      id: 'goal-contributions',
+      title: 'Goal contributions',
+      count: myContributions.length,
+      content: (
+        <Card className="h-full p-6">
+          <div className="mb-4 flex items-center justify-between">
+            <div className="font-mono text-xs uppercase tracking-widest text-text-2">Goal contributions</div>
+            <Badge variant="muted">{myContributions.length}</Badge>
+          </div>
+          {myContributions.length === 0 ? (
+            <p className="font-mono text-xs text-text-3">You haven&apos;t backed any goals yet. Find one to support.</p>
+          ) : (
+            <ul className="divide-y divide-border">
+              {myContributions.map((c) => (
+                <li key={c.goalId} className="py-3">
+                  <Link href={`/goals/${c.goalId}`} className="block hover:text-neon-cyan">
+                    <div className="flex items-center justify-between gap-3">
+                      <div className="min-w-0 flex-1">
+                        <div className="truncate font-mono text-sm text-text-0">{c.goalTitle}</div>
+                        <div className="truncate font-mono text-[11px] text-text-3">@{c.creator.handle}</div>
+                      </div>
+                      <div className="flex-shrink-0 text-right">
+                        <div className="font-mono text-sm text-neon-cyan">{formatCoins(Number(c.myCoins))}</div>
+                        <div className="font-mono text-[10px] text-text-3">contributed</div>
+                      </div>
+                    </div>
+                    <div className="mt-2">
+                      <GoalBar current={c.goalCurrentCoins} target={c.goalTargetCoins} />
+                    </div>
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          )}
+          <div className="mt-4 flex justify-end border-t border-border pt-3">
+            <Link href="/me/purchases" className="font-mono text-xs text-text-2 hover:text-neon-cyan">
+              See all →
+            </Link>
+          </div>
+        </Card>
+      ),
+    },
+    {
+      id: 'lobby-bids',
+      title: 'Lobby Pass bids',
+      count: myLobbyBids.length,
+      content: (
+        <Card className="h-full p-6">
+          <div className="mb-4 flex items-center justify-between">
+            <div className="font-mono text-xs uppercase tracking-widest text-text-2">Lobby Pass bids</div>
+            <Badge variant="muted">{myLobbyBids.length}</Badge>
+          </div>
+          {myLobbyBids.length === 0 ? (
+            <p className="font-mono text-xs text-text-3">No bids yet. Find a live auction and grab a slot.</p>
+          ) : (
+            <ul className="divide-y divide-border">
+              {myLobbyBids.slice(0, 5).map((b) => {
+                const isOpen =
+                  b.passStatus === 'open' && new Date(b.passEndsAt as any) > new Date();
+                const won = b.myBidStatus === 'won' || b.myBidStatus === 'winning';
+                return (
+                  <li key={b.passId} className="py-3">
+                    <Link href={`/passes/${b.passId}`} className="block hover:text-neon-magenta">
+                      <div className="flex items-center justify-between gap-3">
+                        <div className="min-w-0 flex-1">
+                          <div className="truncate font-mono text-sm text-text-0">{b.passTitle}</div>
+                          <div className="truncate font-mono text-[11px] text-text-3">
+                            @{b.creator.handle} · {GAME_LABELS[b.passGame as any] ?? b.passGame}
+                          </div>
+                        </div>
+                        <div className="flex-shrink-0 text-right">
+                          <div className="font-mono text-sm text-neon-magenta">
+                            {formatCoins(Number(b.myTopBid))}
+                          </div>
+                          <Badge variant={isOpen ? 'magenta' : won ? 'green' : 'muted'}>
+                            {isOpen ? 'Live' : won ? 'Won' : b.passStatus}
+                          </Badge>
+                        </div>
+                      </div>
+                    </Link>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+          <div className="mt-4 flex justify-end border-t border-border pt-3">
+            <Link href="/me/purchases" className="font-mono text-xs text-text-2 hover:text-neon-cyan">
+              See all →
+            </Link>
+          </div>
+        </Card>
+      ),
+    },
+  ];
 
   return (
     <div className="min-h-screen">
       <Nav />
       <main className="container-x py-16">
-        <Badge>● Streamer Hub</Badge>
+        <Badge>● Hub</Badge>
         <h1 className="mt-6 font-display text-display-lg text-text-0">
           Welcome back, {session.user.name?.split(' ')[0] ?? 'player'}.
         </h1>
@@ -77,20 +241,25 @@ export default async function HomePage() {
         <div className="mt-10 grid gap-6 md:grid-cols-3 md:auto-rows-fr">
           <Link href="/vault" className="block group h-full">
             <Card className="flex h-full flex-col p-6 transition-all group-hover:border-border-bright group-hover:-translate-y-0.5 cursor-pointer">
-              <div className="font-mono text-xs uppercase tracking-widest text-text-2">Vault — INR</div>
-              <div className="mt-2 font-display text-3xl text-neon-cyan glow-cyan-text">
-                {formatInr(vault.inrBalance)}
+              <div className="font-mono text-xs uppercase tracking-widest text-text-2">Vault — Coins</div>
+              <div className="mt-2 font-display text-3xl text-neon-magenta glow-magenta-text">
+                {formatCoins(vault.coinBalance)}
               </div>
-              <div className="mt-2 font-mono text-xs text-text-3">{formatCoins(vault.coinBalance)} coins</div>
+              <div className="mt-2 font-mono text-xs text-text-3">Spend on Goals · Lobby Passes · Tips</div>
               <div className="mt-auto pt-4 font-mono text-xs text-text-2 group-hover:text-neon-cyan">Open Vault →</div>
             </Card>
           </Link>
 
-          <Link href="/goals" className="block group h-full">
+          <Link href="/me/listings" className="block group h-full">
             <Card className="flex h-full flex-col p-6 transition-all group-hover:border-border-bright group-hover:-translate-y-0.5 cursor-pointer">
-              <div className="font-mono text-xs uppercase tracking-widest text-text-2">Active Squad Goals</div>
+              <div className="font-mono text-xs uppercase tracking-widest text-text-2">Goals you&apos;re running</div>
               <div className="mt-2 font-display text-3xl text-text-0">{myGoals.length}</div>
-              <div className="mt-auto pt-4 font-mono text-xs text-text-2 group-hover:text-neon-cyan">Manage goals →</div>
+              {myContributions.length > 0 && (
+                <div className="mt-2 font-mono text-xs text-text-3">
+                  + {myContributions.length} you&apos;ve backed
+                </div>
+              )}
+              <div className="mt-auto pt-4 font-mono text-xs text-text-2 group-hover:text-neon-cyan">Manage listings →</div>
             </Card>
           </Link>
 
@@ -98,7 +267,44 @@ export default async function HomePage() {
             <Card className="flex h-full flex-col p-6 transition-all group-hover:border-border-bright group-hover:-translate-y-0.5 cursor-pointer">
               <div className="font-mono text-xs uppercase tracking-widest text-text-2">Pending Requests</div>
               <div className="mt-2 font-display text-3xl text-text-0">{pendingCount}</div>
+              <div className="mt-2 font-mono text-xs text-text-3">
+                {pendingIncoming} incoming · {pendingOutgoing} outgoing
+              </div>
               <div className="mt-auto pt-4 font-mono text-xs text-text-2 group-hover:text-neon-cyan">Review requests →</div>
+            </Card>
+          </Link>
+        </div>
+
+        {/* Secondary KPI row — Payouts, Profile, Notifications */}
+        <div className="mt-6 grid gap-6 md:grid-cols-3 md:auto-rows-fr">
+          <Link href="/payouts" className="block group h-full">
+            <Card className="flex h-full flex-col p-6 transition-all group-hover:border-border-bright group-hover:-translate-y-0.5 cursor-pointer">
+              <div className="font-mono text-xs uppercase tracking-widest text-text-2">Payouts</div>
+              <div className="mt-2 font-display text-2xl text-neon-cyan">
+                {formatInr(vault.inrBalance)}
+              </div>
+              <div className="mt-2 font-mono text-xs text-text-3">
+                {vault.inrPending > 0 ? `+ ${formatInr(vault.inrPending)} pending` : 'Available to withdraw'}
+              </div>
+              <div className="mt-auto pt-4 font-mono text-xs text-text-2 group-hover:text-neon-cyan">Withdraw → Stripe →</div>
+            </Card>
+          </Link>
+
+          <Link href="/profile" className="block group h-full">
+            <Card className="flex h-full flex-col p-6 transition-all group-hover:border-border-bright group-hover:-translate-y-0.5 cursor-pointer">
+              <div className="font-mono text-xs uppercase tracking-widest text-text-2">Profile</div>
+              <div className="mt-2 font-display text-2xl text-text-0">@{session.user.name?.split(' ')[0]?.toLowerCase() ?? 'you'}</div>
+              <div className="mt-2 font-mono text-xs text-text-3">Avatar · games · ranks · payout setup</div>
+              <div className="mt-auto pt-4 font-mono text-xs text-text-2 group-hover:text-neon-cyan">Edit profile →</div>
+            </Card>
+          </Link>
+
+          <Link href="/notifications" className="block group h-full">
+            <Card className="flex h-full flex-col p-6 transition-all group-hover:border-border-bright group-hover:-translate-y-0.5 cursor-pointer">
+              <div className="font-mono text-xs uppercase tracking-widest text-text-2">Notifications</div>
+              <div className="mt-2 font-display text-2xl text-text-0">Inbox</div>
+              <div className="mt-2 font-mono text-xs text-text-3">Bids · contributions · DMs · updates</div>
+              <div className="mt-auto pt-4 font-mono text-xs text-text-2 group-hover:text-neon-cyan">Open inbox →</div>
             </Card>
           </Link>
         </div>
@@ -117,88 +323,87 @@ export default async function HomePage() {
           </section>
         )}
 
-        {/* Purchases & Contributions */}
-        {(myPurchases.length > 0 || myContributions.length > 0) && (
-          <section className="mt-16">
-            <h2 className="mb-5 font-display text-2xl text-text-0">Purchases &amp; Contributions</h2>
-            <div className="grid gap-6 md:grid-cols-2">
-              {/* Services purchased */}
-              <Card className="p-5">
-                <div className="mb-3 flex items-center justify-between">
-                  <div className="font-mono text-xs uppercase tracking-widest text-text-2">Services purchased</div>
-                  <Badge variant="muted">{myPurchases.length}</Badge>
-                </div>
-                {myPurchases.length === 0 ? (
-                  <p className="font-mono text-xs text-text-3">No purchases yet.</p>
-                ) : (
-                  <ul className="divide-y divide-border">
-                    {myPurchases.slice(0, 5).map((p) => (
-                      <li key={p.request.id} className="py-3">
-                        <Link href={`/requests/${p.request.id}`} className="block hover:text-neon-cyan">
-                          <div className="flex items-center justify-between gap-3">
-                            <div className="min-w-0">
-                              <div className="truncate font-mono text-sm text-text-0">{p.service.title}</div>
-                              <div className="truncate font-mono text-[11px] text-text-3">
-                                @{p.creator.handle} · {formatInr(p.request.priceInrPaid)}
-                              </div>
-                            </div>
-                            <Badge variant={p.request.status === 'completed' ? 'green' : 'muted'}>
-                              {p.request.status}
-                            </Badge>
-                          </div>
-                        </Link>
-                      </li>
-                    ))}
-                  </ul>
-                )}
-                {myPurchases.length > 5 && (
-                  <Link href="/requests?role=buyer" className="mt-3 inline-block font-mono text-xs text-text-2 hover:text-neon-cyan">
-                    See all {myPurchases.length} purchases →
-                  </Link>
-                )}
-              </Card>
+        {/* Purchases & Contributions — looping carousel with 3 slides */}
+        <div className="mt-16">
+          <PurchasesCarousel heading="Purchases & Contributions" slides={purchaseSlides} />
+        </div>
 
-              {/* Goal contributions */}
-              <Card className="p-5">
-                <div className="mb-3 flex items-center justify-between">
-                  <div className="font-mono text-xs uppercase tracking-widest text-text-2">Goal contributions</div>
-                  <Badge variant="muted">{myContributions.length}</Badge>
-                </div>
-                {myContributions.length === 0 ? (
-                  <p className="font-mono text-xs text-text-3">You haven&apos;t backed any goals yet.</p>
-                ) : (
-                  <ul className="divide-y divide-border">
-                    {myContributions.map((c) => (
-                      <li key={c.goalId} className="py-3">
-                        <Link href={`/goals/${c.goalId}`} className="block hover:text-neon-cyan">
-                          <div className="flex items-center justify-between gap-3">
-                            <div className="min-w-0 flex-1">
-                              <div className="truncate font-mono text-sm text-text-0">{c.goalTitle}</div>
-                              <div className="truncate font-mono text-[11px] text-text-3">@{c.creator.handle}</div>
-                            </div>
-                            <div className="flex-shrink-0 text-right">
-                              <div className="font-mono text-sm text-neon-cyan">{formatCoins(Number(c.myCoins))}</div>
-                              <div className="font-mono text-[10px] text-text-3">contributed</div>
-                            </div>
-                          </div>
-                          <div className="mt-2">
-                            <GoalBar current={c.goalCurrentCoins} target={c.goalTargetCoins} />
-                          </div>
-                        </Link>
-                      </li>
-                    ))}
-                  </ul>
-                )}
-              </Card>
+        {/* Your Squad Goals — only show when user has any */}
+        {myGoals.length > 0 && (
+          <section className="mt-16">
+            <div className="mb-5 flex items-center justify-between">
+              <h2 className="font-display text-2xl text-text-0">Your Squad Goals</h2>
+              <Link href="/me/listings" className="font-mono text-xs text-text-2 hover:text-neon-cyan">
+                See all →
+              </Link>
+            </div>
+            <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-3">
+              {myGoals.slice(0, 6).map(({ goal: g }) => (
+                <Link key={g.id} href={`/goals/${g.id}`} className="block group">
+                  <Card className="h-full p-5 transition-all group-hover:border-border-bright group-hover:-translate-y-0.5">
+                    <div className="flex items-center justify-between">
+                      <Badge variant="default">{g.status}</Badge>
+                      <span className="font-mono text-[11px] text-text-3">
+                        ends {formatDistanceToNow(new Date(g.deadline), { addSuffix: true })}
+                      </span>
+                    </div>
+                    <h3 className="mt-3 line-clamp-2 font-display text-base leading-tight text-text-0">
+                      {g.title}
+                    </h3>
+                    <div className="mt-4">
+                      <GoalBar current={g.currentCoins} target={g.targetCoins} />
+                    </div>
+                  </Card>
+                </Link>
+              ))}
             </div>
           </section>
         )}
 
-        {/* Services */}
+        {/* Your Lobby Passes — only show when user has any open */}
+        {myPasses.length > 0 && (
+          <section className="mt-16">
+            <div className="mb-5 flex items-center justify-between">
+              <h2 className="font-display text-2xl text-text-0">Your Lobby Passes</h2>
+              <Link href="/me/listings" className="font-mono text-xs text-text-2 hover:text-neon-cyan">
+                See all →
+              </Link>
+            </div>
+            <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-3">
+              {myPasses.slice(0, 6).map(({ pass }) => (
+                <Link key={pass.id} href={`/passes/${pass.id}`} className="block group">
+                  <Card className="h-full p-5 transition-all group-hover:border-border-magenta group-hover:-translate-y-0.5">
+                    <div className="flex items-center justify-between">
+                      <Badge variant="magenta">{pass.slotCount} slot{pass.slotCount > 1 ? 's' : ''}</Badge>
+                      <Badge variant="amber">{GAME_LABELS[pass.game] ?? pass.game}</Badge>
+                    </div>
+                    <h3 className="mt-3 line-clamp-2 font-display text-base leading-tight text-text-0">
+                      {pass.title}
+                    </h3>
+                    <div className="mt-4 flex items-end justify-between border-t border-border pt-3">
+                      <div>
+                        <div className="font-mono text-[10px] uppercase tracking-widest text-text-3">Min bid</div>
+                        <div className="font-display text-lg text-neon-magenta">{formatCoins(pass.minBidCoins)}</div>
+                      </div>
+                      <div className="text-right font-mono text-[11px] text-text-3">
+                        ends {formatDistanceToNow(new Date(pass.endsAt), { addSuffix: true })}
+                      </div>
+                    </div>
+                  </Card>
+                </Link>
+              ))}
+            </div>
+          </section>
+        )}
+
+        {/* Services + create buttons (Goal / Pass / Service) */}
         <section className="mt-16">
-          <div className="mb-5 flex items-center justify-between">
+          <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
             <h2 className="font-display text-2xl text-text-0">Your services</h2>
-            <div className="flex gap-2">
+            <div className="flex flex-wrap gap-2">
+              <Button asChild size="sm" variant="outline">
+                <Link href="/goals/create">+ Goal</Link>
+              </Button>
               <Button asChild size="sm" variant="outline">
                 <Link href="/passes/create">+ Lobby Pass</Link>
               </Button>

@@ -87,8 +87,11 @@ export function ChatView({ threadId, currentUserId, initialMessages }: Props) {
   }
 
   return (
-    <Card className="flex h-[60vh] flex-col p-0 overflow-hidden">
-      <div className="flex-1 space-y-3 overflow-y-auto p-6">
+    // Fill the parent container so only this card's message list scrolls
+    // (the parent locks page scroll). Falls back to a sensible min-height
+    // when used in a non-flex parent so existing usages don't collapse.
+    <Card className="flex h-full min-h-[60vh] w-full flex-col overflow-hidden p-0">
+      <div className="min-h-0 flex-1 space-y-3 overflow-y-auto overscroll-contain p-6">
         {msgs.length === 0 ? (
           <div className="grid h-full place-items-center text-center text-text-3">
             <p className="font-mono text-sm">No messages yet. Say hi.</p>

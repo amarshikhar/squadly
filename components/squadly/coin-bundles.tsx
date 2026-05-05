@@ -86,21 +86,23 @@ export function CoinBundles({ className }: CoinBundlesProps) {
 
   return (
     <>
-      <div className={cn('grid gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5', className)}>
+      <div className={cn('grid items-stretch gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5', className)}>
         {COIN_BUNDLES.map((b) => (
           <button
             key={b.inr}
             onClick={() => handleTopUp(b.inr)}
             disabled={loading !== null}
-            className="text-left disabled:opacity-50"
+            className="h-full text-left disabled:opacity-50"
           >
-            <Card className="p-5 text-center transition-all hover:border-border-bright hover:-translate-y-1">
+            <Card className="flex h-full flex-col p-5 text-center transition-all hover:border-border-bright hover:-translate-y-1">
               <div className="font-display text-3xl text-neon-magenta">{b.coins}</div>
               <div className="mt-1 font-mono text-xs uppercase text-text-2">coins</div>
-              {b.bonus > 0 && (
-                <div className="mt-2 font-mono text-xs text-neon-green">+{b.bonus} bonus</div>
-              )}
-              <div className="mt-4 border-t border-border pt-4 font-display text-xl text-text-0">
+              {/* Always reserve the bonus row so cards stay the same height,
+                  even when the pack has no bonus (e.g. the 70-coin pack). */}
+              <div className={cn('mt-2 font-mono text-xs', b.bonus > 0 ? 'text-neon-green' : 'invisible')}>
+                {b.bonus > 0 ? `+${b.bonus} bonus` : '+0'}
+              </div>
+              <div className="mt-auto border-t border-border pt-4 font-display text-xl text-text-0">
                 {loading === b.inr ? 'Opening…' : `₹${b.inr}`}
               </div>
             </Card>
