@@ -2,37 +2,21 @@
  * Razorpay client + helpers.
  * Razorpay is the primary gateway for INR/UPI payments in India.
  *
- * Lazy — instantiates on first use, not at module load. Lets the build step
- * (which imports every route to collect page data) pass even when Razorpay
- * keys aren't present in the build environment.
+ * Eager init is safe here: `new Razorpay({key_id: '', key_secret: ''})` does
+ * not throw — the SDK only fails when you make an actual API call without
+ * valid keys. So this module imports cleanly even when keys aren't set in
+ * the build env.
  */
 import Razorpay from 'razorpay';
 import crypto from 'crypto';
 
-let _razorpay: Razorpay | null = null;
-let warned = false;
-
-function getRazorpay(): Razorpay {
-  if (_razorpay) return _razorpay;
-  const id = process.env.RAZORPAY_KEY_ID;
-  const secret = process.env.RAZORPAY_KEY_SECRET;
-  if ((!id || !secret) && !warned) {
-    console.warn('[razorpay] Missing RAZORPAY_KEY_ID / RAZORPAY_KEY_SECRET — payments will not work');
-    warned = true;
-  }
-  _razorpay = new Razorpay({
-    key_id: id ?? '',
-    key_secret: secret ?? '',
-  });
-  return _razorpay;
+if (!process.env.RAZORPAY_KEY_ID || !process.env.RAZORPAY_KEY_SECRET) {
+  console.warn('[razorpay] Missing RAZORPAY_KEY_ID / RAZORPAY_KEY_SECRET — payments will not work');
 }
 
-export const razorpay = new Proxy({} as Razorpay, {
-  get(_target, prop, receiver) {
-    const real = getRazorpay();
-    const value = Reflect.get(real, prop, receiver);
-    return typeof value === 'function' ? value.bind(real) : value;
-  },
+export const razorpay = new Razorpay({
+  key_id: process.env.RAZORPAY_KEY_ID ?? '',
+  key_secret: process.env.RAZORPAY_KEY_SECRET ?? '',
 });
 
 /** Create a Razorpay order for INR amount (in paise) */

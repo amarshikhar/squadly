@@ -1,43 +1,43 @@
-import { drizzle, type PostgresJsDatabase } from 'drizzle-orm/postgres-js';
+import { drizzle } from 'drizzle-orm/postgres-js';
 import postgres from 'postgres';
 import * as schema from './schema';
 
 /**
- * Lazy postgres client — only connects on the first DB call, never at module
- * load time. This matters because Next.js's "Collecting page data" build step
- * imports every route file to inspect its exports. If this module threw on
- * import (e.g. DATABASE_URL not set in a preview build env), the whole build
- * would fail even though no DB query is actually being made.
+ * Build-time-safe DB client.
  *
- * The Proxy keeps the public surface identical: `import { db } from '@/lib/db'`
- * still gives you a `PostgresJsDatabase<typeof schema>` you can use with all
- * the usual Drizzle helpers (`db.query.x.findFirst`, `db.select(...)`,
- * `db.transaction(...)`, etc).
+ * Why this looks weird: Next.js's "Collecting page data" build step imports
+ * every route to inspect its exports. NextAuth + @auth/drizzle-adapter, when
+ * configured, binds adapter methods against `db` at import time. If we threw
+ * here when DATABASE_URL was missing, the build would fail on Vercel preview
+ * environments that don't have DB access (even though no actual query runs
+ * during the build).
+ *
+ * postgres-js does NOT open a connection at construction — it just parses the
+ * URL string. So we feed it a placeholder URL when DATABASE_URL isn't set,
+ * which lets module evaluation succeed. At runtime, if DATABASE_URL is still
+ * missing, the first real query will surface the misconfiguration as a normal
+ * connection error.
  */
+const PLACEHOLDER_URL =
+  'postgres://placeholder:placeholder@localhost:5432/placeholder';
 
-let _db: PostgresJsDatabase<typeof schema> | null = null;
+const url = process.env.DATABASE_URL || PLACEHOLDER_URL;
 
-function getDb(): PostgresJsDatabase<typeof schema> {
-  if (_db) return _db;
-  const url = process.env.DATABASE_URL;
-  if (!url) {
-    throw new Error('DATABASE_URL is not set');
-  }
-  // Single connection for serverless functions; reuse on warm starts
-  const client = postgres(url, { prepare: false, max: 1 });
-  _db = drizzle(client, { schema });
-  return _db;
+if (!process.env.DATABASE_URL) {
+  // Visible in build logs and runtime logs, but doesn't break the build.
+  // eslint-disable-next-line no-console
+  console.warn(
+    '[db] DATABASE_URL is not set — using placeholder; queries will fail at runtime',
+  );
 }
 
-export const db = new Proxy({} as PostgresJsDatabase<typeof schema>, {
-  get(_target, prop, receiver) {
-    const real = getDb();
-    const value = Reflect.get(real, prop, receiver);
-    // Bind functions so `this` stays the real Drizzle instance even when
-    // callers do `const fn = db.transaction; fn(...)` style detachment.
-    return typeof value === 'function' ? value.bind(real) : value;
-  },
+// Single connection for serverless functions; reuse on warm starts
+const queryClient = postgres(url, {
+  prepare: false,
+  max: 1,
 });
+
+export const db = drizzle(queryClient, { schema });
 
 export type DB = typeof db;
 export * from './schema';

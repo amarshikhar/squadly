@@ -2,35 +2,19 @@
  * Stripe Connect client.
  * Used for international fan checkout + creator payouts to non-Indian creators.
  *
- * Lazy — instantiates on first use, not at module load. Lets the build step
- * (which imports every route to collect page data) pass even when
- * STRIPE_SECRET_KEY isn't present in the build environment.
+ * Eager init is safe here: `new Stripe('')` does not throw — Stripe SDK only
+ * fails when you make an actual API call without a valid key. So this module
+ * imports cleanly even when STRIPE_SECRET_KEY isn't set in the build env.
  */
 import Stripe from 'stripe';
 
-let _stripe: Stripe | null = null;
-let warned = false;
-
-function getStripe(): Stripe {
-  if (_stripe) return _stripe;
-  const key = process.env.STRIPE_SECRET_KEY;
-  if (!key && !warned) {
-    console.warn('[stripe] Missing STRIPE_SECRET_KEY — Stripe payments disabled');
-    warned = true;
-  }
-  _stripe = new Stripe(key ?? '', {
-    apiVersion: '2024-06-20',
-    typescript: true,
-  });
-  return _stripe;
+if (!process.env.STRIPE_SECRET_KEY) {
+  console.warn('[stripe] Missing STRIPE_SECRET_KEY — Stripe payments disabled');
 }
 
-export const stripe = new Proxy({} as Stripe, {
-  get(_target, prop, receiver) {
-    const real = getStripe();
-    const value = Reflect.get(real, prop, receiver);
-    return typeof value === 'function' ? value.bind(real) : value;
-  },
+export const stripe = new Stripe(process.env.STRIPE_SECRET_KEY ?? '', {
+  apiVersion: '2024-06-20',
+  typescript: true,
 });
 
 /** Create Stripe Connect Express account for a creator */
