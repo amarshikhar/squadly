@@ -48,17 +48,18 @@ export async function Footer() {
 
   return (
     <footer className="mt-24 border-t border-border bg-bg-1">
-      {/* Flush container — matches top-bar padding (px-4 / sm:px-6) instead of container-x */}
+      {/* Flush container — matches top-bar padding (px-4 / sm:px-6) */}
       <div className="px-4 py-12 sm:px-6">
-        <div
-          className={
-            'grid gap-10 ' +
-            (isAuthed ? 'md:grid-cols-4' : 'md:grid-cols-3')
-          }
-        >
-          {/* 1: Brand */}
-          <div>
-            <Link href="/" className="inline-flex items-center gap-2" aria-label={`${APP_NAME} home`}>
+        {/* Outer row — Brand left, link groups middle, Legal right.
+            Stacks vertically on mobile, flows horizontally on lg+. */}
+        <div className="flex flex-col gap-10 lg:flex-row lg:items-start lg:justify-between">
+          {/* LEFT — Brand */}
+          <div className="lg:w-48 lg:flex-shrink-0">
+            <Link
+              href="/"
+              className="inline-flex items-center gap-2"
+              aria-label={`${APP_NAME} home`}
+            >
               <Image
                 src="/squadly-logo.png"
                 alt=""
@@ -72,62 +73,20 @@ export async function Footer() {
             </p>
           </div>
 
-          {/* 2: Navigate (public + auth grouped) */}
-          <div>
-            <div className="font-mono text-[10px] uppercase tracking-widest text-text-3">Navigate</div>
-            <div className="mt-3 flex flex-wrap gap-x-5 gap-y-2">
-              {PUBLIC_LINKS.map((l) => (
-                <Link
-                  key={l.href}
-                  href={l.href}
-                  className="font-mono text-xs text-text-2 hover:text-neon-cyan"
-                >
-                  {l.label}
-                </Link>
-              ))}
-            </div>
-            {isAuthed && (
-              <>
-                <div className="mt-6 font-mono text-[10px] uppercase tracking-widest text-text-3">
-                  For you
-                </div>
-                <div className="mt-3 flex flex-wrap gap-x-5 gap-y-2">
-                  {AUTH_LINKS.map((l) => (
-                    <Link
-                      key={l.href}
-                      href={l.href}
-                      className="font-mono text-xs text-text-2 hover:text-neon-cyan"
-                    >
-                      {l.label}
-                    </Link>
-                  ))}
-                </div>
-              </>
-            )}
+          {/* MIDDLE — three link subgroups laid out horizontally on desktop.
+              Each subgroup keeps its own header + items vertical inside. */}
+          <div className="flex flex-col gap-10 sm:flex-row sm:flex-wrap sm:gap-x-12 sm:gap-y-8">
+            <NavGroup title="Navigate" links={PUBLIC_LINKS} />
+            {isAuthed && <NavGroup title="For you" links={AUTH_LINKS} />}
+            {isAuthed && <NavGroup title="Create" links={CREATE_LINKS} />}
           </div>
 
-          {/* 3: Create — auth only. Hidden when signed out so the grid is 3-col. */}
-          {isAuthed && (
-            <div>
-              <div className="font-mono text-[10px] uppercase tracking-widest text-text-3">Create</div>
-              <div className="mt-3 flex flex-col gap-2">
-                {CREATE_LINKS.map((l) => (
-                  <Link
-                    key={l.href}
-                    href={l.href}
-                    className="font-mono text-xs text-text-2 transition-colors hover:text-neon-cyan"
-                  >
-                    {l.label}
-                  </Link>
-                ))}
-              </div>
+          {/* RIGHT — Legal flush to the right edge */}
+          <div className="lg:flex-shrink-0 lg:text-right">
+            <div className="font-mono text-[10px] uppercase tracking-widest text-text-3">
+              Legal
             </div>
-          )}
-
-          {/* 4: Legal — flush to the right edge */}
-          <div className="text-right">
-            <div className="font-mono text-[10px] uppercase tracking-widest text-text-3">Legal</div>
-            <div className="mt-3 flex flex-col items-end gap-2">
+            <div className="mt-3 flex flex-col gap-2 lg:items-end">
               {LEGAL_LINKS.map((l) => (
                 <Link
                   key={l.href}
@@ -155,5 +114,26 @@ export async function Footer() {
         </div>
       </div>
     </footer>
+  );
+}
+
+function NavGroup({ title, links }: { title: string; links: NavLink[] }) {
+  return (
+    <div className="min-w-[7rem]">
+      <div className="font-mono text-[10px] uppercase tracking-widest text-text-3">
+        {title}
+      </div>
+      <div className="mt-3 flex flex-col gap-2">
+        {links.map((l) => (
+          <Link
+            key={l.href}
+            href={l.href}
+            className="font-mono text-xs text-text-2 transition-colors hover:text-neon-cyan"
+          >
+            {l.label}
+          </Link>
+        ))}
+      </div>
+    </div>
   );
 }
