@@ -192,7 +192,7 @@ export default async function StreamerHub({ params }: { params: { handle: string
                     <GoalBar current={goals[0].goal.currentCoins} target={goals[0].goal.targetCoins} />
                   </div>
                   <Button asChild className="mt-6 w-full" variant="outline">
-                    <Link href="/goals">Contribute coins</Link>
+                    <Link href={`/goals/${goals[0].goal.id}`}>Contribute coins</Link>
                   </Button>
                 </Card>
               </section>
