@@ -7,7 +7,7 @@ import { settleCompletedRequest, refundRequest } from '@/lib/ledger';
 import { getRequestById } from '@/lib/db/queries';
 
 const PatchSchema = z.object({
-  action: z.enum(['accept', 'start', 'complete', 'cancel']),
+  action: z.enum(['accept', 'start', 'complete', 'cancel', 'abandon']),
   cancelReason: z.string().max(500).optional(),
 });
 
@@ -115,6 +115,27 @@ export async function PATCH(request: Request, { params }: { params: { id: string
 
       // Trigger refund to buyer
       await refundRequest(req.id, parse.data.cancelReason ?? 'request_cancelled');
+      break;
+    }
+
+    case 'abandon': {
+      // Buyer abandoning a never-paid pending request (e.g., closed Razorpay
+      // modal without completing payment). No money was captured, so no
+      // refund needed — we just mark it cancelled and tag the reason so the
+      // outgoing-requests list can hide these from the buyer's view.
+      if (!isBuyer) return NextResponse.json({ error: 'buyer_only' }, { status: 403 });
+      if (req.status !== 'pending') {
+        return NextResponse.json({ error: 'invalid_state' }, { status: 409 });
+      }
+
+      await db
+        .update(serviceRequests)
+        .set({
+          status: 'cancelled',
+          cancelledAt: new Date(),
+          cancelReason: 'payment_abandoned',
+        })
+        .where(eq(serviceRequests.id, req.id));
       break;
     }
   }

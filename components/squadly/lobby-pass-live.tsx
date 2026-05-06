@@ -75,6 +75,13 @@ export function LobbyPassLive(props: Props) {
     return unsub;
   }, [props.passId, router]);
 
+  // Sync local bids state whenever the server sends fresh data via
+  // router.refresh(). Without this the optimistic insert would stick around
+  // forever and double-render bids on subsequent submissions.
+  useEffect(() => {
+    setBids(props.initialBids);
+  }, [props.initialBids]);
+
   // Polling fallback (every 15s) in case Pusher isn't configured
   useEffect(() => {
     if (closed) return;

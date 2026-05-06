@@ -41,7 +41,9 @@ export function LobbyPassForm() {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? 'failed');
-      router.push(`/passes/${data.pass.id}`);
+      // replace (not push) so the back button from the detail page goes to
+      // wherever the user came from (e.g., Hub) instead of the create form.
+      router.replace(`/passes/${data.pass.id}`);
     } catch (e: any) {
       setError(e.message);
       setLoading(false);

@@ -208,8 +208,17 @@ export async function getRequestById(id: string) {
 // ============================================================================
 
 export async function listActiveGoals(creatorId?: string) {
-  const conditions = [eq(squadGoals.status, 'active'), gt(squadGoals.deadline, new Date())];
-  if (creatorId) conditions.push(eq(squadGoals.creatorId, creatorId));
+  // Creator-side filter (Hub "Goals you're running"): only currently-active
+  // goals with the deadline still in the future.
+  // Browse (no creatorId): include funded goals too so users still see closed
+  // wins (social proof / momentum). Cancelled goals are always excluded.
+  const conditions = creatorId
+    ? [
+        eq(squadGoals.creatorId, creatorId),
+        eq(squadGoals.status, 'active'),
+        gt(squadGoals.deadline, new Date()),
+      ]
+    : [sql`${squadGoals.status} IN ('active', 'funded', 'delivered')`];
 
   return db
     .select({

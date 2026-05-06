@@ -6,6 +6,7 @@ import { Nav } from '@/components/squadly/nav';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { LobbyPassLive } from '@/components/squadly/lobby-pass-live';
+import { ShareLinkButton } from '@/components/squadly/share-link-button';
 import { db, users, lobbyPassBids } from '@/lib/db';
 import { getPassWithBids } from '@/lib/lobby-pass';
 import { getVaultBalance } from '@/lib/db/queries';
@@ -115,6 +116,15 @@ export default async function PassDetail({ params }: { params: { id: string } })
                 </div>
               </div>
             </Card>
+
+            <div className="mt-4">
+              <ShareLinkButton
+                path={`/passes/${pass.id}`}
+                title={`${pass.title} · Lobby Pass on Squadly`}
+                variant="magenta"
+                fullWidth
+              />
+            </div>
           </div>
 
           {/* RIGHT — live bidding */}

@@ -35,7 +35,8 @@ export function GoalForm() {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? 'failed');
-      router.push(`/goals/${data.goal.id}`);
+      // replace (not push) so back from the detail page returns to Hub, not the form.
+      router.replace(`/goals/${data.goal.id}`);
     } catch (e: any) {
       setError(e.message);
       setLoading(false);

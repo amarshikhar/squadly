@@ -6,7 +6,7 @@ import { eq } from 'drizzle-orm';
 
 const CreateServiceSchema = z.object({
   type: z.enum(['coaching', 'duo', 'rank_push', 'lineup', 'crosshair_fix', 'hype_reel', 'custom']),
-  game: z.enum(['bgmi', 'valorant', 'free_fire', 'dota2', 'cs2', 'cod_mobile', 'fortnite', 'mobile_legends', 'other']),
+  game: z.enum(['bgmi', 'valorant', 'free_fire', 'dota2', 'cs2', 'cod_mobile', 'fortnite', 'mobile_legends', 'chess', 'other']),
   title: z.string().min(3).max(80),
   description: z.string().min(10).max(2000),
   priceInr: z.number().int().positive(),

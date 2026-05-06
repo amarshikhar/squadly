@@ -7,6 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { GoalBar } from '@/components/squadly/goal-bar';
 import { GoalLiveProgress } from '@/components/squadly/goal-live-progress';
 import { ContributeButton } from '@/components/squadly/contribute-button';
+import { ShareLinkButton } from '@/components/squadly/share-link-button';
 import { getGoalById, getVaultBalance } from '@/lib/db/queries';
 import { formatDistanceToNow } from 'date-fns';
 
@@ -114,6 +115,13 @@ export default async function GoalDetail({ params }: { params: { id: string } })
                   />
                 </>
               )}
+              <div className="mt-4 border-t border-border pt-4">
+                <ShareLinkButton
+                  path={`/goals/${goal.id}`}
+                  title={`${goal.title} · @${creator.handle} on Squadly`}
+                  fullWidth
+                />
+              </div>
             </Card>
           </div>
         </div>

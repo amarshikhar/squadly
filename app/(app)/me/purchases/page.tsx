@@ -33,13 +33,22 @@ export default async function MyPurchasesPage() {
 
   const userId = session.user.id;
 
-  const [outgoingRequests, myContributions, myLobbyBids] = await Promise.all([
+  const [outgoingRequestsAll, myContributions, myLobbyBids] = await Promise.all([
     listRequestsForBuyer(userId),
     listMyGoalContributions(userId, 50),
     listMyLobbyBids(userId, 50),
   ]);
 
-  const totalSpent = outgoingRequests.reduce((sum, r) => sum + r.request.priceInrPaid, 0);
+  // Hide bookings the buyer abandoned at the Razorpay modal (no money moved).
+  const outgoingRequests = outgoingRequestsAll.filter(
+    (r) => !(r.request.status === 'cancelled' && r.request.cancelReason === 'payment_abandoned'),
+  );
+
+  // Total spent only counts requests that actually went through (i.e., not
+  // cancelled). Otherwise abandoned/refunded bookings would inflate the figure.
+  const totalSpent = outgoingRequests
+    .filter((r) => r.request.status !== 'cancelled')
+    .reduce((sum, r) => sum + r.request.priceInrPaid, 0);
   const totalContribCoins = myContributions.reduce((sum, c) => sum + Number(c.myCoins), 0);
   const totalBidCoins = myLobbyBids.reduce((sum, b) => sum + Number(b.myTopBid), 0);
 
@@ -81,12 +90,14 @@ export default async function MyPurchasesPage() {
           {outgoingRequests.length === 0 ? (
             <Card className="p-10 text-center">
               <p className="font-mono text-sm text-text-3">No services purchased yet.</p>
-              <Button asChild className="mt-5">
+              <Button asChild className="mt-5" variant="outline">
                 <Link href="/services">Browse services →</Link>
               </Button>
             </Card>
           ) : (
-            <div className="grid gap-4 md:grid-cols-2">
+            // Scrollable container — keeps the page scannable when the user has
+            // many purchases. Always sorted newest-first by listRequestsForBuyer.
+            <div className="grid max-h-[70vh] gap-4 overflow-y-auto pr-2 md:grid-cols-2">
               {outgoingRequests.map((p) => (
                 <Link key={p.request.id} href={`/requests/${p.request.id}`} className="block group">
                   <Card className="h-full p-5 transition-all group-hover:border-border-bright group-hover:-translate-y-0.5">
@@ -122,12 +133,12 @@ export default async function MyPurchasesPage() {
           {myContributions.length === 0 ? (
             <Card className="p-10 text-center">
               <p className="font-mono text-sm text-text-3">You haven&apos;t backed any Squad Goals yet.</p>
-              <Button asChild className="mt-5">
+              <Button asChild className="mt-5" variant="outline">
                 <Link href="/goals">Find a Squad Goal →</Link>
               </Button>
             </Card>
           ) : (
-            <div className="grid gap-4 md:grid-cols-2">
+            <div className="grid max-h-[70vh] gap-4 overflow-y-auto pr-2 md:grid-cols-2">
               {myContributions.map((c) => (
                 <Link key={c.goalId} href={`/goals/${c.goalId}`} className="block group">
                   <Card className="h-full p-5 transition-all group-hover:border-border-bright group-hover:-translate-y-0.5">
@@ -166,7 +177,7 @@ export default async function MyPurchasesPage() {
               </Button>
             </Card>
           ) : (
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+            <div className="grid max-h-[70vh] gap-4 overflow-y-auto pr-2 md:grid-cols-2 lg:grid-cols-3">
               {myLobbyBids.map((b) => {
                 const isOpen = b.passStatus === 'open' && new Date(b.passEndsAt as any) > new Date();
                 const won = b.myBidStatus === 'won' || b.myBidStatus === 'winning';

@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { usePathname } from 'next/navigation';
 import { signOutAction } from '@/app/actions/auth';
 
 interface MobileMenuProps {
@@ -12,6 +13,7 @@ interface MobileMenuProps {
 
 export function MobileMenu({ isAuthed, userName, coinBalance }: MobileMenuProps) {
   const [open, setOpen] = useState(false);
+  const pathname = usePathname();
 
   // Lock body scroll while drawer is open
   useEffect(() => {
@@ -104,20 +106,21 @@ export function MobileMenu({ isAuthed, userName, coinBalance }: MobileMenuProps)
               )}
 
               {isAuthed && (
-                <NavLink href="/feed" onClick={() => setOpen(false)}>Feed</NavLink>
+                <NavLink href="/feed" pathname={pathname} onClick={() => setOpen(false)}>Feed</NavLink>
               )}
-              <NavLink href="/services" onClick={() => setOpen(false)}>Browse</NavLink>
-              <NavLink href="/goals" onClick={() => setOpen(false)}>Goals</NavLink>
-              <NavLink href="/passes" onClick={() => setOpen(false)}>Passes</NavLink>
+              <NavLink href="/services" pathname={pathname} onClick={() => setOpen(false)}>Services</NavLink>
+              <NavLink href="/goals" pathname={pathname} onClick={() => setOpen(false)}>Goals</NavLink>
+              <NavLink href="/passes" pathname={pathname} onClick={() => setOpen(false)}>Passes</NavLink>
               {isAuthed ? (
                 <>
-                  <NavLink href="/requests" onClick={() => setOpen(false)}>Requests</NavLink>
-                  <NavLink href="/messages" onClick={() => setOpen(false)}>DMs</NavLink>
-                  <NavLink href="/notifications" onClick={() => setOpen(false)}>Notifications</NavLink>
-                  <NavLink href="/referrals" onClick={() => setOpen(false)}>Referrals</NavLink>
-                  <NavLink href="/payouts" onClick={() => setOpen(false)}>Payouts</NavLink>
-                  <NavLink href="/profile" onClick={() => setOpen(false)}>Profile</NavLink>
-                  <NavLink href="/home" onClick={() => setOpen(false)} accent>Hub</NavLink>
+                  <NavLink href="/me/listings" pathname={pathname} onClick={() => setOpen(false)}>Listings</NavLink>
+                  <NavLink href="/me/purchases" pathname={pathname} onClick={() => setOpen(false)}>Purchases</NavLink>
+                  <NavLink href="/messages" pathname={pathname} onClick={() => setOpen(false)}>DMs</NavLink>
+                  <NavLink href="/notifications" pathname={pathname} onClick={() => setOpen(false)}>Notifications</NavLink>
+                  <NavLink href="/referrals" pathname={pathname} onClick={() => setOpen(false)}>Referrals</NavLink>
+                  <NavLink href="/payouts" pathname={pathname} onClick={() => setOpen(false)}>Payouts</NavLink>
+                  <NavLink href="/profile" pathname={pathname} onClick={() => setOpen(false)}>Profile</NavLink>
+                  <NavLink href="/home" pathname={pathname} onClick={() => setOpen(false)} accent>Hub</NavLink>
                   <form action={signOutAction} className="mt-3">
                     <button
                       type="submit"
@@ -128,7 +131,7 @@ export function MobileMenu({ isAuthed, userName, coinBalance }: MobileMenuProps)
                   </form>
                 </>
               ) : (
-                <NavLink href="/signin" onClick={() => setOpen(false)} accent>Sign in</NavLink>
+                <NavLink href="/signin" pathname={pathname} onClick={() => setOpen(false)} accent>Sign in</NavLink>
               )}
             </div>
 
@@ -156,27 +159,52 @@ export function MobileMenu({ isAuthed, userName, coinBalance }: MobileMenuProps)
   );
 }
 
+/**
+ * NavLink with active-state highlight. The drawer is the primary nav on mobile,
+ * so the user really benefits from a clear "you are here" cue (raised bg, cyan
+ * accent, left border) — without it every page feels the same after a tap.
+ */
 function NavLink({
   href,
+  pathname,
   onClick,
   accent,
   children,
 }: {
   href: string;
+  pathname: string;
   onClick: () => void;
   accent?: boolean;
   children: React.ReactNode;
 }) {
+  // Match exact path OR a child path under it (e.g. /me/listings is also active
+  // when viewing /me/listings/whatever in the future).
+  const isActive = pathname === href || pathname.startsWith(href + '/');
+
+  if (accent) {
+    return (
+      <Link
+        href={href}
+        onClick={onClick}
+        className="rounded-lg bg-neon-cyan px-4 py-3 text-base font-semibold text-black shadow-glow-cyan transition-colors hover:brightness-110"
+      >
+        {children}
+      </Link>
+    );
+  }
+
   return (
     <Link
       href={href}
       onClick={onClick}
-      className={`rounded-lg px-4 py-3 text-base transition-colors ${
-        accent
-          ? 'bg-neon-cyan text-black font-semibold shadow-glow-cyan hover:brightness-110'
-          : 'text-text-1 hover:bg-bg-2 hover:text-text-0'
-      }`}
+      aria-current={isActive ? 'page' : undefined}
+      className={
+        isActive
+          ? 'flex items-center gap-2 rounded-lg border border-neon-cyan/40 bg-neon-cyan/10 px-4 py-3 text-base text-neon-cyan'
+          : 'rounded-lg px-4 py-3 text-base text-text-1 transition-colors hover:bg-bg-2 hover:text-text-0'
+      }
     >
+      {isActive && <span aria-hidden className="font-mono text-xs">●</span>}
       {children}
     </Link>
   );
