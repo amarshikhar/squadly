@@ -39,7 +39,7 @@ export default async function HomePage() {
     myGoals,
     incomingRequests,
     myServices,
-    outgoingRequests,
+    outgoingRequestsAll,
     myContributions,
     myLobbyBids,
     myPasses,
@@ -61,6 +61,12 @@ export default async function HomePage() {
       limit: 6,
     }),
   ]);
+
+  // Hide bookings the buyer abandoned at the Razorpay modal — those never
+  // captured payment so they shouldn't show up as "booked" in the outgoing list.
+  const outgoingRequests = outgoingRequestsAll.filter(
+    (r) => !(r.request.status === 'cancelled' && r.request.cancelReason === 'payment_abandoned'),
+  );
 
   const pendingIncoming = incomingRequests.filter((r) => r.request.status === 'pending').length;
   const pendingOutgoing = outgoingRequests.filter((r) => r.request.status === 'pending').length;

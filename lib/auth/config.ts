@@ -13,6 +13,12 @@ export const authConfig = {
     Google({
       clientId: process.env.AUTH_GOOGLE_ID!,
       clientSecret: process.env.AUTH_GOOGLE_SECRET!,
+      // Force Google's account chooser on every sign-in so users with
+      // multiple Google accounts in the same browser can pick which one
+      // to sign in with — instead of silently reusing the last session.
+      authorization: {
+        params: { prompt: 'select_account' },
+      },
     }),
     Discord({
       clientId: process.env.AUTH_DISCORD_ID!,

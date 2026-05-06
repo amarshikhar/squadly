@@ -10,7 +10,7 @@ interface NavLink {
 
 // Visible to everyone (signed in or out).
 const PUBLIC_LINKS: NavLink[] = [
-  { href: '/services', label: 'Browse' },
+  { href: '/services', label: 'Services' },
   { href: '/goals', label: 'Goals' },
   { href: '/passes', label: 'Passes' },
 ];

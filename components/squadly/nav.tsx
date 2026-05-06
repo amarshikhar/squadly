@@ -33,12 +33,13 @@ export async function Nav() {
           {session?.user && (
             <Link href="/feed" className="transition-colors hover:text-neon-cyan">Feed</Link>
           )}
-          <Link href="/services" className="transition-colors hover:text-neon-cyan">Browse</Link>
+          <Link href="/services" className="transition-colors hover:text-neon-cyan">Services</Link>
           <Link href="/goals" className="transition-colors hover:text-neon-cyan">Goals</Link>
           <Link href="/passes" className="transition-colors hover:text-neon-cyan">Passes</Link>
           {session?.user && (
             <>
-              <Link href="/requests" className="transition-colors hover:text-neon-cyan">Requests</Link>
+              <Link href="/me/listings" className="transition-colors hover:text-neon-cyan">Listings</Link>
+              <Link href="/me/purchases" className="transition-colors hover:text-neon-cyan">Purchases</Link>
               <Link href="/messages" className="transition-colors hover:text-neon-cyan">DMs</Link>
               <Link href="/home" className="transition-colors hover:text-neon-cyan">Hub</Link>
             </>

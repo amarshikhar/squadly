@@ -10,8 +10,7 @@ export default async function LandingPage() {
 
   // Both CTAs route authenticated users to their Hub instead of the sign-in page.
   const ctaHref = isAuthed ? '/home' : '/signin';
-  const ctaPrimary = isAuthed ? 'Open your Hub' : 'Get started';
-  const ctaSecondary = isAuthed ? 'Open your Hub — your squad is waiting' : "Get started — it's free";
+  const ctaPrimary = isAuthed ? 'Join Squad' : 'Get started';
 
   return (
     <div className="min-h-screen">
@@ -36,10 +35,10 @@ export default async function LandingPage() {
           </p>
 
           <div className="mt-10 flex flex-wrap gap-3">
-            <Button asChild size="lg">
+            <Button asChild>
               <Link href={ctaHref}>{ctaPrimary}</Link>
             </Button>
-            <Button asChild size="lg" variant="outline">
+            <Button asChild variant="outline">
               <Link href="/services">Browse creators</Link>
             </Button>
           </div>
@@ -145,8 +144,8 @@ export default async function LandingPage() {
               ? 'Your Hub is one click away — manage services, passes, goals, and the Vault.'
               : 'Sign in with Discord, set up your services in minutes, and start earning.'}
           </p>
-          <Button asChild size="lg" className="mt-8">
-            <Link href={ctaHref}>{ctaSecondary}</Link>
+          <Button asChild className="mt-8">
+            <Link href={ctaHref}>{ctaPrimary}</Link>
           </Button>
         </div>
       </section>

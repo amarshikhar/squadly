@@ -57,7 +57,8 @@ export function ServiceForm() {
       }
 
       const { service } = await res.json();
-      router.push(`/services/${service.id}`);
+      // replace (not push) so back from the detail page returns to Hub, not the form.
+      router.replace(`/services/${service.id}`);
     } catch (e: any) {
       setError(e.message);
       setLoading(false);

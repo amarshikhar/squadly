@@ -55,6 +55,12 @@ export function BookButton({ serviceId, priceInr }: BookButtonProps) {
       await loadRazorpay();
       if (!window.Razorpay) throw new Error('razorpay_unavailable');
 
+      // Track whether the user actually completed payment so we know to
+      // abandon the orphan request when they close the modal without paying.
+      // Otherwise the pending request shows up in /me/purchases as "booked"
+      // even though no money moved.
+      let paid = false;
+
       const checkout = new window.Razorpay({
         key: razorpay.keyId,
         amount: razorpay.amount,
@@ -64,10 +70,20 @@ export function BookButton({ serviceId, priceInr }: BookButtonProps) {
         description: 'Service booking',
         theme: { color: '#00f0ff', backdrop_color: '#070912' },
         handler() {
+          paid = true;
           router.push(`/requests/${request.id}`);
         },
         modal: {
           ondismiss() {
+            if (!paid) {
+              // Fire-and-forget: abandon the never-paid pending request so
+              // it stops showing in the buyer's outgoing list.
+              fetch(`/api/requests/${request.id}`, {
+                method: 'PATCH',
+                headers: { 'content-type': 'application/json' },
+                body: JSON.stringify({ action: 'abandon' }),
+              }).catch(() => null);
+            }
             setLoading(false);
           },
         },

@@ -60,7 +60,9 @@ try {
             updated_at = NOW()
     `;
 
-    // Audit-trail transaction row
+    // Audit-trail transaction row.
+    // gateway is constrained to ('razorpay', 'stripe', 'internal') — use 'internal'
+    // for admin-initiated grants since no payment processor was involved.
     await tx`
       INSERT INTO transactions (user_id, type, amount_coins, status, gateway, description, created_at, settled_at)
       VALUES (
@@ -68,7 +70,7 @@ try {
         'coin_purchase',
         ${amount},
         'success',
-        'manual',
+        'internal',
         'Admin grant via _grant-coins.mjs',
         NOW(),
         NOW()

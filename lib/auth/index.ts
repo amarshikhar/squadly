@@ -5,8 +5,9 @@
  */
 import NextAuth, { type DefaultSession } from 'next-auth';
 import { DrizzleAdapter } from '@auth/drizzle-adapter';
-import { db } from '@/lib/db';
+import { db, users } from '@/lib/db';
 import { authConfig } from './config';
+import { eq, and, ne } from 'drizzle-orm';
 import {
   pgTable,
   uuid,
@@ -79,6 +80,44 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     verificationTokensTable: verificationTokens,
   }),
   events: {
+    /**
+     * Fires once per user, the first time they sign in via OAuth. The Drizzle
+     * adapter has already inserted the row but doesn't know about our `handle`
+     * column — it's left empty (or whatever default the DB has), which leads
+     * to "@<empty>" rendering and 404s on /[handle]. We generate a clean,
+     * unique handle from the email's local part right after creation.
+     */
+    async createUser({ user }) {
+      if (!user.id || !user.email) return;
+      try {
+        // Sanitize: lowercase, only [a-z0-9_], collapse repeats, trim ends.
+        const local = user.email
+          .split('@')[0]
+          .toLowerCase()
+          .replace(/[^a-z0-9_]/g, '_')
+          .replace(/_+/g, '_')
+          .replace(/^_+|_+$/g, '')
+          .slice(0, 28); // leave room for a 4-char collision suffix
+
+        let candidate = local.length >= 3 ? local : `player_${user.id.slice(0, 6)}`;
+
+        for (let attempt = 0; attempt < 10; attempt++) {
+          const existing = await db.query.users.findFirst({
+            where: and(eq(users.handle, candidate), ne(users.id, user.id)),
+          });
+          if (!existing) {
+            await db.update(users).set({ handle: candidate }).where(eq(users.id, user.id));
+            return;
+          }
+          // Collision — append random 4-char suffix and retry.
+          const base = local.length >= 3 ? local.slice(0, 24) : 'player';
+          candidate = `${base}_${Math.random().toString(36).slice(2, 6)}`;
+        }
+      } catch (e) {
+        // Don't block sign-up if handle generation fails — log and move on.
+        console.error('[auth] failed to set handle for new user', user.id, e);
+      }
+    },
     async signIn({ user }) {
       // TODO: ensure vault_balances row exists for new users
       console.info('[auth] sign-in', user.email);

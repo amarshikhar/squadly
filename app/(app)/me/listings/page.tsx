@@ -95,7 +95,10 @@ export default async function MyListingsPage() {
               </Button>
             </Card>
           ) : (
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+            // Scrollable section — newest-first ordering keeps recent activity
+            // up-top, and the max-height keeps the page tidy when the user has
+            // many listings.
+            <div className="grid max-h-[70vh] gap-4 overflow-y-auto pr-2 md:grid-cols-2 lg:grid-cols-3">
               {myServices.map((s) => (
                 <Link key={s.id} href={`/services/${s.id}`} className="block group">
                   <Card className="h-full p-5 transition-all group-hover:border-border-bright group-hover:-translate-y-0.5">
@@ -124,12 +127,12 @@ export default async function MyListingsPage() {
           {myGoals.length === 0 ? (
             <Card className="p-10 text-center">
               <p className="font-mono text-sm text-text-3">No active Squad Goals. Rally your fans for a push.</p>
-              <Button asChild className="mt-5">
+              <Button asChild className="mt-5" variant="outline">
                 <Link href="/goals/create">Open your first goal</Link>
               </Button>
             </Card>
           ) : (
-            <div className="grid gap-4 md:grid-cols-2">
+            <div className="grid max-h-[70vh] gap-4 overflow-y-auto pr-2 md:grid-cols-2">
               {myGoals.map(({ goal: g }) => (
                 <Link key={g.id} href={`/goals/${g.id}`} className="block group">
                   <Card className="h-full p-5 transition-all group-hover:border-border-bright group-hover:-translate-y-0.5">
@@ -170,7 +173,7 @@ export default async function MyListingsPage() {
               </Button>
             </Card>
           ) : (
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+            <div className="grid max-h-[70vh] gap-4 overflow-y-auto pr-2 md:grid-cols-2 lg:grid-cols-3">
               {myPasses.map(({ pass }) => (
                 <Link key={pass.id} href={`/passes/${pass.id}`} className="block group">
                   <Card className="h-full p-5 transition-all group-hover:border-border-magenta group-hover:-translate-y-0.5">
