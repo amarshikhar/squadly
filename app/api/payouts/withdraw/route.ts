@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
-import { eq, sql } from 'drizzle-orm';
+import { and, eq, sql } from 'drizzle-orm';
 import { db, vaultBalances, transactions, users, providerProfiles } from '@/lib/db';
 import { auth } from '@/lib/auth';
 import { ensureContact, createFundAccountUPI, createPayout } from '@/lib/payments/razorpay-x';
@@ -50,7 +50,7 @@ export async function POST(request: Request) {
   const userId = session.user.id;
   const { amountInr, vpa } = parse.data;
 
-  // Lock + check balance
+  // Fast-fail UX check (non-authoritative — the transaction below is the real guard)
   const vault = await db.query.vaultBalances.findFirst({
     where: eq(vaultBalances.userId, userId),
   });
@@ -74,29 +74,45 @@ export async function POST(request: Request) {
     vpa,
   });
 
-  // 3. Insert pending transaction + debit vault atomically
-  const txId = await db.transaction(async (tx) => {
-    await tx
-      .update(vaultBalances)
-      .set({
-        inrBalance: sql`${vaultBalances.inrBalance} - ${amountInr}`,
-        inrPending: sql`${vaultBalances.inrPending} + ${amountInr}`,
-      })
-      .where(eq(vaultBalances.userId, userId));
+  // 3. Atomic debit: balance check is inside the UPDATE's WHERE clause so two
+  //    concurrent withdrawals can never both succeed even if both passed the
+  //    fast-fail check above.
+  let txId: string;
+  try {
+    txId = await db.transaction(async (tx) => {
+      const [debited] = await tx
+        .update(vaultBalances)
+        .set({
+          inrBalance: sql`${vaultBalances.inrBalance} - ${amountInr}`,
+          inrPending: sql`${vaultBalances.inrPending} + ${amountInr}`,
+        })
+        .where(and(
+          eq(vaultBalances.userId, userId),
+          sql`${vaultBalances.inrBalance} >= ${amountInr}`,
+        ))
+        .returning();
 
-    const [txRow] = await tx
-      .insert(transactions)
-      .values({
-        userId,
-        type: 'service_payout',
-        amountInr: -amountInr,
-        status: 'pending',
-        gateway: 'razorpay',
-        description: `Withdrawal to ${vpa}`,
-      })
-      .returning();
-    return txRow.id;
-  });
+      if (!debited) throw new Error('insufficient_balance');
+
+      const [txRow] = await tx
+        .insert(transactions)
+        .values({
+          userId,
+          type: 'service_payout',
+          amountInr: -amountInr,
+          status: 'pending',
+          gateway: 'razorpay',
+          description: `Withdrawal to ${vpa}`,
+        })
+        .returning();
+      return txRow.id;
+    });
+  } catch (e: any) {
+    if (e.message === 'insufficient_balance') {
+      return NextResponse.json({ error: 'insufficient_balance' }, { status: 400 });
+    }
+    throw e;
+  }
 
   // 4. Trigger payout
   try {

@@ -218,6 +218,14 @@ export async function capturePayment(opts: {
   gateway: 'razorpay' | 'stripe';
 }) {
   return db.transaction(async (tx) => {
+    const existing = await tx.query.transactions.findFirst({
+      where: and(
+        eq(transactions.relatedRequestId, opts.requestId),
+        eq(transactions.type, 'service_payment'),
+      ),
+    });
+    if (existing) return; // idempotent: duplicate webhook delivery
+
     await tx.insert(transactions).values({
       userId: opts.userId,
       type: 'service_payment',
