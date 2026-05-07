@@ -40,25 +40,30 @@ export async function POST(request: Request, { params }: { params: { id: string 
     return NextResponse.json({ error: 'request_not_disputable', status: req.status }, { status: 409 });
   }
 
-  // Create dispute (unique on request_id — won't double-dispute)
+  // Dispute insert + request status update must be atomic: a crash between them
+  // would leave an open dispute while the request remains in a settleable state,
+  // allowing the creator to complete and get paid despite an active dispute.
   try {
-    const [dispute] = await db
-      .insert(disputes)
-      .values({
-        requestId: req.id,
-        raisedBy: session.user.id,
-        creatorId: req.creatorId,
-        buyerId: req.buyerId,
-        reason: parse.data.reason,
-        status: 'open',
-      })
-      .returning();
+    const [dispute] = await db.transaction(async (tx) => {
+      const [d] = await tx
+        .insert(disputes)
+        .values({
+          requestId: req.id,
+          raisedBy: session.user.id,
+          creatorId: req.creatorId,
+          buyerId: req.buyerId,
+          reason: parse.data.reason,
+          status: 'open',
+        })
+        .returning();
 
-    // Mark the request as 'disputed' to halt any further state changes
-    await db
-      .update(serviceRequests)
-      .set({ status: 'disputed' })
-      .where(eq(serviceRequests.id, req.id));
+      await tx
+        .update(serviceRequests)
+        .set({ status: 'disputed' })
+        .where(eq(serviceRequests.id, req.id));
+
+      return [d];
+    });
 
     await emit({
       userId: req.creatorId,

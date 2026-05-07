@@ -3,7 +3,7 @@ import { z } from 'zod';
 import { eq, sql } from 'drizzle-orm';
 import { db, disputes, serviceRequests, transactions, vaultBalances } from '@/lib/db';
 import { requireAdmin } from '@/lib/admin';
-import { ensureVault } from '@/lib/ledger';
+import { ensureVault, settleCompletedRequest } from '@/lib/ledger';
 import { emit } from '@/lib/notifications';
 
 const ResolveSchema = z.object({
@@ -120,6 +120,12 @@ export async function PATCH(request: Request, { params }: { params: { id: string
       }
     }
   });
+
+  // For creator-wins resolutions, ensure payout runs (idempotent — no-ops if already settled).
+  // Covers the case where the dispute was raised before the request was completed.
+  if (parse.data.resolution === 'resolved_creator') {
+    await settleCompletedRequest(req.id);
+  }
 
   // Notify both parties
   await Promise.all([

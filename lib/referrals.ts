@@ -68,10 +68,13 @@ export async function redeem(code: string, redeemerId: string) {
   const existing = await db.query.referrals.findFirst({ where: eq(referrals.redeemedBy, redeemerId) });
   if (existing) throw new ReferralError('already_redeemed_one', 'You have already used a referral code');
 
-  await db
+  // Atomic claim: WHERE redeemedBy IS NULL ensures only one concurrent caller wins
+  const [claimed] = await db
     .update(referrals)
     .set({ redeemedBy: redeemerId, redeemedAt: new Date(), status: 'redeemed' })
-    .where(eq(referrals.id, ref.id));
+    .where(and(eq(referrals.id, ref.id), sql`${referrals.redeemedBy} IS NULL`))
+    .returning();
+  if (!claimed) throw new ReferralError('already_used', 'Code already redeemed');
 
   return ref;
 }
@@ -87,11 +90,13 @@ export async function payoutOnFirstTransaction(redeemerId: string) {
   if (!ref) return null;
 
   return db.transaction(async (tx) => {
-    // Idempotent: check status again inside txn
-    const fresh = await tx.query.referrals.findFirst({
-      where: and(eq(referrals.id, ref.id), eq(referrals.status, 'redeemed')),
-    });
-    if (!fresh) return null;
+    // Atomic flip: only one concurrent caller can move redeemed→rewarded
+    const [claimed] = await tx
+      .update(referrals)
+      .set({ status: 'rewarded', rewardedAt: new Date() })
+      .where(and(eq(referrals.id, ref.id), eq(referrals.status, 'redeemed')))
+      .returning();
+    if (!claimed) return null;
 
     await ensureVault(ref.referrerId, tx);
     await ensureVault(redeemerId, tx);
@@ -131,12 +136,7 @@ export async function payoutOnFirstTransaction(redeemerId: string) {
       },
     ]);
 
-    await tx
-      .update(referrals)
-      .set({ status: 'rewarded', rewardedAt: new Date() })
-      .where(eq(referrals.id, ref.id));
-
-    return ref;
+    return claimed;
   }).then(async (paid) => {
     if (paid) {
       await Promise.all([
