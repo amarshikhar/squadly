@@ -246,11 +246,29 @@ export async function capturePayment(opts: {
  */
 export async function settleCompletedRequest(requestId: string) {
   return db.transaction(async (tx) => {
-    const req = await tx.query.serviceRequests.findFirst({
-      where: eq(serviceRequests.id, requestId),
-    });
-    if (!req) throw new Error('request_not_found');
-    if (req.status !== 'completed') throw new Error('request_not_completed');
+    // Atomically flip status to 'completed'. Merging the status update and
+    // settlement into one transaction eliminates the crash window where
+    // status=completed but the creator payout never runs.
+    let req = (
+      await tx
+        .update(serviceRequests)
+        .set({ status: 'completed', completedAt: new Date() })
+        .where(and(
+          eq(serviceRequests.id, requestId),
+          sql`${serviceRequests.status} IN ('accepted', 'in_progress')`,
+        ))
+        .returning()
+    )[0];
+
+    if (!req) {
+      // Flip didn't fire — check why: already completed (re-entry) or wrong state (throw).
+      const existing = await tx.query.serviceRequests.findFirst({
+        where: eq(serviceRequests.id, requestId),
+      });
+      if (!existing) throw new Error('request_not_found');
+      if (existing.status !== 'completed') throw new Error('request_not_completed');
+      req = existing;
+    }
 
     // Idempotency guard: if a service_payout txn already exists for this
     // request, the settlement has already been processed — don't double-credit.

@@ -87,12 +87,7 @@ export async function PATCH(request: Request, { params }: { params: { id: string
         return NextResponse.json({ error: 'invalid_state' }, { status: 409 });
       }
 
-      await db
-        .update(serviceRequests)
-        .set({ status: 'completed', completedAt: new Date() })
-        .where(eq(serviceRequests.id, req.id));
-
-      // Move money: creator gets payout, platform takes commission
+      // Status flip + payout happen atomically inside settleCompletedRequest
       await settleCompletedRequest(req.id);
       break;
     }
