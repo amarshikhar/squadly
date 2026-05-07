@@ -18,7 +18,7 @@ CREATE TYPE game_code AS ENUM ('bgmi', 'valorant', 'free_fire', 'dota2', 'cs2', 
 CREATE TYPE service_type AS ENUM ('coaching', 'duo', 'rank_push', 'lineup', 'crosshair_fix', 'hype_reel', 'custom');
 CREATE TYPE service_status AS ENUM ('draft', 'live', 'paused', 'archived');
 CREATE TYPE request_status AS ENUM ('pending', 'accepted', 'in_progress', 'completed', 'cancelled', 'disputed');
-CREATE TYPE transaction_type AS ENUM ('coin_purchase', 'service_payment', 'service_payout', 'tip', 'goal_contribution', 'lobby_pass_bid', 'refund', 'platform_fee');
+CREATE TYPE transaction_type AS ENUM ('coin_purchase', 'service_payment', 'service_payout', 'tip', 'goal_contribution', 'lobby_pass_bid', 'lobby_pass_payout', 'refund', 'platform_fee');
 CREATE TYPE transaction_status AS ENUM ('pending', 'success', 'failed', 'refunded');
 CREATE TYPE goal_status AS ENUM ('active', 'funded', 'expired', 'delivered', 'cancelled');
 CREATE TYPE rank_tier AS ENUM ('recruit', 'soldier', 'veteran', 'legend', 'commander');

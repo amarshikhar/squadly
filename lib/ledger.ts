@@ -412,11 +412,16 @@ export async function contributeToGoal(opts: {
     // 5. Update fan's squad_rank for this creator
     await upsertSquadRank({ creatorId: goal.creatorId, fanId: opts.fanId, addCoins: opts.coins, tx });
 
-    return { goal: updated[0], transactionId: coinTx.id, wasFunded: updated[0]?.status === 'funded' };
+    return {
+      goal: updated[0],
+      transactionId: coinTx.id,
+      wasFunded: updated[0]?.status === 'funded',
+      creatorId: goal.creatorId,
+      goalTitle: goal.title,
+    };
   }).then(async (result) => {
-    // Notify creator of contribution
     await emit({
-      userId: (await db.query.squadGoals.findFirst({ where: eq(squadGoals.id, opts.goalId) }))!.creatorId,
+      userId: result.creatorId,
       type: 'goal_contribution_received',
       title: `+${opts.coins} coins toward your goal`,
       body: `${result.goal?.currentCoins}/${result.goal?.targetCoins} coins so far`,
@@ -426,18 +431,14 @@ export async function contributeToGoal(opts: {
     });
 
     if (result.wasFunded) {
-      // Notify creator
-      const goalRow = await db.query.squadGoals.findFirst({ where: eq(squadGoals.id, opts.goalId) });
-      if (goalRow) {
-        await emit({
-          userId: goalRow.creatorId,
-          type: 'goal_funded',
-          title: 'Squad Goal funded! Time to deliver.',
-          body: goalRow.title,
-          link: `/goals/${goalRow.id}`,
-          relatedId: goalRow.id,
-        });
-      }
+      await emit({
+        userId: result.creatorId,
+        type: 'goal_funded',
+        title: 'Squad Goal funded! Time to deliver.',
+        body: result.goalTitle,
+        link: `/goals/${opts.goalId}`,
+        relatedId: opts.goalId,
+      });
     }
     return result;
   });

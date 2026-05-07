@@ -35,7 +35,7 @@ export const requestStatus = pgEnum('request_status', [
   'pending', 'accepted', 'in_progress', 'completed', 'cancelled', 'disputed',
 ]);
 export const transactionType = pgEnum('transaction_type', [
-  'coin_purchase', 'service_payment', 'service_payout', 'tip', 'goal_contribution', 'lobby_pass_bid', 'refund', 'platform_fee',
+  'coin_purchase', 'service_payment', 'service_payout', 'tip', 'goal_contribution', 'lobby_pass_bid', 'lobby_pass_payout', 'refund', 'platform_fee',
 ]);
 export const transactionStatus = pgEnum('transaction_status', ['pending', 'success', 'failed', 'refunded']);
 export const goalStatus = pgEnum('goal_status', ['active', 'funded', 'expired', 'delivered', 'cancelled']);

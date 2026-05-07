@@ -19,7 +19,7 @@ import {
   transactions,
   messageThreads,
 } from './db/schema';
-import { upsertSquadRank } from './ledger';
+import { upsertSquadRank, ensureVault } from './ledger';
 import { publish, channels, events } from './pusher';
 import { emit } from './notifications';
 
@@ -63,7 +63,7 @@ export async function placeBid(opts: { passId: string; bidderId: string; coinAmo
       orderBy: [desc(lobbyPassBids.bidAt)],
     });
 
-    if (existingMine && existingMine.status !== 'refunded') {
+    if (existingMine) {
       // Refund prior bid coins back to vault, mark as refunded
       await refundBidEscrow(tx, bidderId, existingMine.coinAmount, 'replaced_by_higher_bid', existingMine.id);
       await tx
@@ -174,15 +174,20 @@ async function refundBidEscrow(tx: Tx, userId: string, coins: number, reason: st
 
 export async function closePass(passId: string) {
   return db.transaction(async (tx) => {
-    const pass = await tx.query.lobbyPasses.findFirst({ where: eq(lobbyPasses.id, passId) });
-    if (!pass) throw new LobbyPassError('pass_not_found', 'Pass not found');
-    if (pass.status !== 'open') return { alreadyClosed: true };
-
-    // Lock the pass
-    await tx
+    // Atomic lock: only one concurrent invocation wins the CAS; the rest short-circuit.
+    // Using UPDATE ... WHERE status='open' + RETURNING avoids the TOCTOU race between
+    // a separate SELECT and UPDATE that a two-step approach would have.
+    const [pass] = await tx
       .update(lobbyPasses)
       .set({ status: 'closed' })
-      .where(eq(lobbyPasses.id, passId));
+      .where(and(eq(lobbyPasses.id, passId), eq(lobbyPasses.status, 'open')))
+      .returning();
+
+    if (!pass) {
+      const existing = await tx.query.lobbyPasses.findFirst({ where: eq(lobbyPasses.id, passId) });
+      if (!existing) throw new LobbyPassError('pass_not_found', 'Pass not found');
+      return { alreadyClosed: true };
+    }
 
     // Sort all live bids by amount desc
     const liveBids = await tx
@@ -228,9 +233,9 @@ export async function closePass(passId: string) {
       });
     }
 
-    // 2. Refund losers
-    for (const l of losers) {
-      if (l.status === 'refunded') continue;
+    // 2. Refund losers — only those not already refunded (e.g. by a prior bid replacement)
+    const actualLosers = losers.filter((l) => l.status !== 'refunded');
+    for (const l of actualLosers) {
       await refundBidEscrow(tx, l.bidderId, l.coinAmount, 'lobby_pass_outbid_at_close', l.id);
       await tx
         .update(lobbyPassBids)
@@ -238,15 +243,30 @@ export async function closePass(passId: string) {
         .where(eq(lobbyPassBids.id, l.id));
     }
 
-    // 3. Record platform fee on each winning bid (creator gets the rest as coin credit)
-    //    Platform fee is taken in coins for lobby passes (different from INR services)
-    //    For simplicity now: creator earns the full coin amount; fee tracked in ledger.
+    // 3. Credit creator vault for all winning bids (full amount; platform fee split is Phase 2)
+    const totalWinnerCoins = winners.reduce((sum, w) => sum + w.coinAmount, 0);
+    if (totalWinnerCoins > 0) {
+      await ensureVault(pass.creatorId, tx);
+      await tx
+        .update(vaultBalances)
+        .set({ coinBalance: sql`${vaultBalances.coinBalance} + ${totalWinnerCoins}` })
+        .where(eq(vaultBalances.userId, pass.creatorId));
+      await tx.insert(transactions).values({
+        userId: pass.creatorId,
+        type: 'lobby_pass_payout',
+        amountCoins: totalWinnerCoins,
+        status: 'success',
+        gateway: 'internal',
+        description: `Lobby Pass closed: ${winners.length} winner(s) — "${pass.title}"`,
+        settledAt: new Date(),
+      });
+    }
 
     return {
       pass,
       winners: winners.map((w) => ({ bidId: w.id, bidderId: w.bidderId, amount: w.coinAmount })),
-      losers: losers.map((l) => ({ bidderId: l.bidderId, amount: l.coinAmount })),
-      losersRefunded: losers.length,
+      losers: actualLosers.map((l) => ({ bidderId: l.bidderId, amount: l.coinAmount })),
+      losersRefunded: actualLosers.length,
     };
   }).then(async (result) => {
     // Notifications outside the transaction
